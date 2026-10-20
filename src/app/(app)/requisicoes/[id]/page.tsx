@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { CalendarIcon, ChevronLeftIcon, FileTextIcon, GridIcon, HardHatIcon, MapPinIcon, PlusIcon, UserIcon } from "lucide-react";
+import { CalendarIcon, ChevronLeftIcon, FileTextIcon, GridIcon, HardHatIcon, MapPinIcon, PencilIcon, PlusIcon, UserIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { fornecedoresPorCategoria } from "@/server/dados/cadastros";
 import { obterEmpresa } from "@/server/dados/empresa";
-import { obterMapa, ultimosPrecosPagos } from "@/server/dados/requisicoes";
+import { obterMapa, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
 import { PageHeader } from "@/components/page-header";
 import { StatusRequisicaoBadge, UrgenteBadge } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
   const empresa = obterEmpresa(db);
   const ultimos = ultimosPrecosPagos(db, r.itens.map((i) => i.materialId));
   const editavel = ["aberta", "cotando", "aguardando_aprovacao"].includes(r.status);
+  const itensEditaveis = editavel && !temPedidosAtivos(db, r.id);
 
   const categoriaIds = [...new Set(r.itens.map((i) => i.categoriaId))];
   const jaCotaram = new Set(mapa.propostas.map((p) => p.fornecedorId));
@@ -128,6 +129,13 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Itens ({r.itens.length})</CardTitle>
+              {itensEditaveis && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/requisicoes/${r.id}/editar`}>
+                    <PencilIcon /> Editar / adicionar itens
+                  </Link>
+                </Button>
+              )}
             </CardHeader>
             <Table>
               <TableHeader>

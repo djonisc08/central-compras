@@ -18,11 +18,26 @@ import { diasEntre, formatarData, somarDias } from "@/lib/datas";
 import { aoEnviar } from "@/lib/form";
 import { interpretarPedido, type ObraContexto } from "@/lib/interpretar-pedido";
 import { cn } from "@/lib/utils";
-import { criarRequisicaoCompletaAction } from "@/server/actions/requisicoes";
+import { atualizarRequisicaoCompletaAction, criarRequisicaoCompletaAction } from "@/server/actions/requisicoes";
+
+export type RequisicaoEmEdicao = {
+  id: number;
+  obraId: number;
+  solicitante: string;
+  dataPedido: string;
+  dataNecessidade: string;
+  urgente: boolean;
+  origemTexto: string | null;
+  observacoes: string | null;
+  itens: { id: number; materialId: number; quantidade: number; especificacao: string | null }[];
+  qtdPropostas: number;
+};
 
 type NovoMaterial = { nome: string; unidade: string; categoria: string };
 type Linha = {
   chave: number;
+  /** Item já gravado (modo edição). */
+  itemId?: number;
   materialId: number | null;
   novo: NovoMaterial | null;
   quantidade: string;
@@ -44,24 +59,38 @@ export function FormRequisicao({
   materiais,
   categorias,
   abrirColar,
+  editar,
 }: {
   hoje: string;
   obras: (ObraContexto & { status: string })[];
   materiais: OpcaoMaterial[];
   categorias: Categoria[];
   abrirColar?: boolean;
+  editar?: RequisicaoEmEdicao;
 }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
-  const [obraId, setObraId] = useState("");
-  const [solicitante, setSolicitante] = useState("");
-  const [dataPedido, setDataPedido] = useState(hoje);
-  const [dataNecessidade, setDataNecessidade] = useState(somarDias(hoje, 3));
-  const [urgente, setUrgente] = useState(false);
-  const [urgenteManual, setUrgenteManual] = useState(false);
-  const [origem, setOrigem] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  const [linhas, setLinhas] = useState<Linha[]>([novaLinha()]);
+  const [obraId, setObraId] = useState(editar ? String(editar.obraId) : "");
+  const [solicitante, setSolicitante] = useState(editar?.solicitante ?? "");
+  const [dataPedido, setDataPedido] = useState(editar?.dataPedido ?? hoje);
+  const [dataNecessidade, setDataNecessidade] = useState(editar?.dataNecessidade ?? somarDias(hoje, 3));
+  const [urgente, setUrgente] = useState(editar?.urgente ?? false);
+  const [urgenteManual, setUrgenteManual] = useState(!!editar);
+  const [origem, setOrigem] = useState(editar?.origemTexto ?? "");
+  const [observacoes, setObservacoes] = useState(editar?.observacoes ?? "");
+  const [linhas, setLinhas] = useState<Linha[]>(() =>
+    editar
+      ? editar.itens.map((i) => ({
+          chave: seq++,
+          itemId: i.id,
+          materialId: i.materialId,
+          novo: null,
+          quantidade: String(i.quantidade).replace(".", ","),
+          especificacao: i.especificacao ?? "",
+          textoOriginal: null,
+        }))
+      : [novaLinha()],
+  );
   const [colado, setColado] = useState("");
   const [alertas, setAlertas] = useState<string[]>([]);
   const [interpretado, setInterpretado] = useState<string | null>(null);
@@ -91,6 +120,31 @@ export function FormRequisicao({
   function interpretar() {
     if (!colado.trim()) return void toast.error("Cole a mensagem do WhatsApp primeiro");
     const r = interpretarPedido(colado, { obras, catalogo: materiais }, hoje);
+    if (editar) {
+      // Itens adicionais da obra: somam aos que já estão na requisição.
+      const extras = r.itens.map((i) => ({
+        chave: seq++,
+        materialId: i.materialId,
+        novo: i.situacao === "novo" ? { ...i.sugestaoNovo } : null,
+        quantidade: String(i.quantidade).replace(".", ","),
+        especificacao: "",
+        textoOriginal: i.textoOriginal,
+        situacao: i.situacao,
+        aviso: i.aviso,
+        candidatos: i.candidatos,
+        sugestao: i.sugestaoNovo,
+      }));
+      if (!extras.length) return void toast.error("Não encontrei itens nessa mensagem");
+      setLinhas((ls) => [...ls.filter((l) => l.materialId || l.novo || l.quantidade), ...extras]);
+      setOrigem((o) => (o ? `${o}\n\n--- itens adicionais ---\n${colado.trim()}` : colado.trim()));
+      if (r.dataNecessidade && r.dataNecessidade < dataNecessidade) setDataNecessidade(r.dataNecessidade);
+      setAlertas(r.alertas.filter((x) => !/identifiquei a obra|quando precisa/.test(x)));
+      setColado("");
+      setInterpretado(`${extras.length} itens adicionados`);
+      toast.success(`${extras.length} itens adicionados. Confira abaixo e salve.`);
+      setTimeout(() => document.getElementById("fim-itens")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      return;
+    }
     if (r.obraId) setObraId(String(r.obraId));
     if (r.solicitante) setSolicitante(r.solicitante);
     setDataPedido(r.dataPedido);
@@ -133,8 +187,7 @@ export function FormRequisicao({
       toast.error(`Item ${semDecisao + 1}: escolha um material do catálogo ou cadastre como novo`);
       return;
     }
-    iniciar(async () => {
-      const r = await criarRequisicaoCompletaAction({
+    const dados = {
         obra: Number(obraId) || 0,
         solicitante,
         dataPedido,
@@ -143,13 +196,24 @@ export function FormRequisicao({
         origemTexto: origem,
         observacoes,
         itens: usadas.map((l) => ({
+          id: l.itemId ?? null,
           materialId: l.materialId,
           novoMaterial: l.novo ? { ...l.novo, novaCategoria: true } : null,
           quantidade: Number(l.quantidade.replace(/\./g, "").replace(",", ".")),
           especificacao: l.especificacao,
           textoOriginal: l.textoOriginal,
         })),
-      });
+    };
+    iniciar(async () => {
+      if (editar) {
+        const r = await atualizarRequisicaoCompletaAction(editar.id, dados);
+        if (!r.ok) return void toast.error(r.erro);
+        const extra = r.dados.novos.length ? ` · ${r.dados.novos.length} materiais novos no catálogo` : "";
+        toast.success(`Requisição #${editar.id} atualizada${extra}`);
+        router.push(`/requisicoes/${editar.id}`);
+        return;
+      }
+      const r = await criarRequisicaoCompletaAction(dados);
       if (!r.ok) return void toast.error(r.erro);
       const extra = r.dados.novos.length ? ` · ${r.dados.novos.length} materiais novos no catálogo` : "";
       toast.success(`Requisição #${r.dados.id} criada${extra}`);
@@ -173,11 +237,12 @@ export function FormRequisicao({
         <CardHeader className="pb-2">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <ClipboardPasteIcon className="size-4 text-primary" /> Colar pedido do WhatsApp
+              <ClipboardPasteIcon className="size-4 text-primary" /> {editar ? "Colar itens adicionais do WhatsApp" : "Colar pedido do WhatsApp"}
             </CardTitle>
             <CardDescription>
-              Cole a mensagem como chegou (com cabeçalho, CNPJ, endereço…). O sistema separa obra, prazo e itens, casa com o catálogo e sugere o cadastro do que
-              for novo.
+              {editar
+                ? "A obra mandou mais itens? Cole a mensagem aqui: os itens novos entram no fim da lista, sem mexer nos que já estão."
+                : "Cole a mensagem como chegou (com cabeçalho, CNPJ, endereço…). O sistema separa obra, prazo e itens, casa com o catálogo e sugere o cadastro do que for novo."}
             </CardDescription>
           </div>
         </CardHeader>
@@ -198,7 +263,7 @@ export function FormRequisicao({
           />
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" onClick={interpretar}>
-              <WandSparklesIcon /> Interpretar pedido
+              <WandSparklesIcon /> {editar ? "Adicionar itens" : "Interpretar pedido"}
             </Button>
             <span className="text-xs text-muted-foreground">Ctrl + Enter também interpreta</span>
             {interpretado && (
@@ -430,9 +495,16 @@ export function FormRequisicao({
               <option key={c} value={c} />
             ))}
           </datalist>
-          <Button type="button" variant="outline" size="sm" className="mt-1 w-fit" onClick={adicionarLinha}>
+          <Button id="fim-itens" type="button" variant="outline" size="sm" className="mt-1 w-fit" onClick={adicionarLinha}>
             <PlusIcon /> Adicionar item
           </Button>
+          {editar && editar.qtdPropostas > 0 && (
+            <p className="flex items-start gap-1.5 rounded-lg bg-st-atencao-bg px-3 py-2 text-xs">
+              <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-st-atencao" />
+              Esta requisição já tem {editar.qtdPropostas} proposta(s). Itens novos ficam sem preço nelas (lance o preço na proposta ou peça cotação de novo); itens
+              removidos saem das propostas.
+            </p>
+          )}
           {contagem.novo > 0 && (
             <p className="text-xs text-muted-foreground">
               Materiais <strong>NOVO</strong> entram no catálogo ao salvar, com o texto “como veio” guardado como sinônimo: na próxima vez o sistema reconhece sozinho.
@@ -460,7 +532,7 @@ export function FormRequisicao({
           Cancelar
         </Button>
         <Button type="submit" disabled={pendente} size="lg">
-          {pendente ? "Salvando…" : "Criar requisição"}
+          {pendente ? "Salvando…" : editar ? "Salvar alterações" : "Criar requisição"}
         </Button>
       </div>
     </form>

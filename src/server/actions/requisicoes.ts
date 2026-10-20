@@ -16,6 +16,7 @@ import {
 } from "@/server/dados/requisicoes";
 import type { PropostaInput, RequisicaoInput } from "@/lib/validacao";
 import {
+  atualizarRequisicaoCompleta,
   gravarRequisicao,
   prepararRequisicao,
   type RequisicaoCompletaEntrada,
@@ -77,4 +78,15 @@ export async function criarRequisicaoCompletaAction(dados: RequisicaoCompletaEnt
     const r = gravarRequisicao(db, preparada);
     return { ...r, avisos: preparada.avisos };
   });
+}
+
+export async function atualizarRequisicaoCompletaAction(id: number, dados: RequisicaoCompletaEntrada) {
+  return comRefresh(
+    executar(() => {
+      const db = getDb();
+      const preparada = prepararRequisicao(db, dados);
+      const r = atualizarRequisicaoCompleta(db, id, preparada);
+      return { ...r, avisos: preparada.avisos };
+    }),
+  );
 }

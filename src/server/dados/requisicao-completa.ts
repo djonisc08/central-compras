@@ -2,8 +2,9 @@
 // Valida tudo antes, cadastra os materiais novos (com o texto da obra como sinônimo) e grava.
 import { eq } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { obras } from "@/db/schema";
+import { obras, requisicaoItens, requisicoes } from "@/db/schema";
 import { diasEntre, hojeISO } from "@/lib/datas";
+import { requisicaoSchema } from "@/lib/validacao";
 import { buscarMateriais, normalizarTexto } from "@/lib/normalizar";
 import {
   adicionarSinonimo,
@@ -14,7 +15,7 @@ import {
   obterObraPorNome,
   salvarMaterial,
 } from "./cadastros";
-import { criarRequisicao } from "./requisicoes";
+import { criarRequisicao, recalcularStatusRequisicao, temPedidosAtivos } from "./requisicoes";
 
 export type NovoMaterialEntrada = {
   nome: string;
@@ -26,6 +27,8 @@ export type NovoMaterialEntrada = {
 };
 
 export type ItemRequisicaoEntrada = {
+  /** Item já existente na requisição (edição). */
+  id?: number | null;
   materialId?: number | null;
   novoMaterial?: NovoMaterialEntrada | null;
   quantidade: number;
@@ -99,7 +102,10 @@ export function prepararRequisicao(db: DB, r: RequisicaoCompletaEntrada) {
 
 export type RequisicaoPreparada = ReturnType<typeof prepararRequisicao>;
 
-export function gravarRequisicao(db: DB, p: RequisicaoPreparada) {
+const semId = <T extends { id: unknown }>({ id, ...resto }: T) => (void id, resto);
+
+/** Cadastra os materiais novos (e categorias) e devolve os itens prontos para gravar. */
+function resolverItens(db: DB, p: RequisicaoPreparada) {
   const novos: { id: number; nome: string }[] = [];
   const categoriasCriadas = new Map<string, number>();
   const itens = p.linhas.map((l) => {
@@ -121,9 +127,13 @@ export function gravarRequisicao(db: DB, p: RequisicaoPreparada) {
     } else if (l.textoOriginal && materialId) {
       adicionarSinonimo(db, materialId, l.textoOriginal); // aprende o jeito da obra escrever
     }
-    return { materialId: materialId!, quantidade: l.quantidade, especificacao: l.especificacao ?? null };
+    return { id: l.id ?? null, materialId: materialId!, quantidade: l.quantidade, especificacao: l.especificacao || null };
   });
+  return { itens, novos, categoriasCriadas: [...categoriasCriadas.keys()] };
+}
 
+export function gravarRequisicao(db: DB, p: RequisicaoPreparada) {
+  const { itens, novos, categoriasCriadas } = resolverItens(db, p);
   const id = criarRequisicao(db, {
     obraId: p.obra.id,
     solicitante: p.entrada.solicitante,
@@ -132,7 +142,63 @@ export function gravarRequisicao(db: DB, p: RequisicaoPreparada) {
     urgente: p.urgente,
     origemTexto: p.entrada.origemTexto ?? null,
     observacoes: p.entrada.observacoes ?? null,
-    itens,
+    itens: itens.map(semId),
   });
-  return { id, novos, categoriasCriadas: [...categoriasCriadas.keys()] };
+  return { id, novos, categoriasCriadas };
+}
+
+/**
+ * Edita uma requisição antes dos pedidos: cabeçalho, itens alterados, removidos e novos.
+ * Item que mudou de material perde os preços já lançados para ele (são de outro produto).
+ */
+export function atualizarRequisicaoCompleta(db: DB, requisicaoId: number, p: RequisicaoPreparada) {
+  const req = db.select().from(requisicoes).where(eq(requisicoes.id, requisicaoId)).get();
+  if (!req) throw new Error("Requisição não encontrada");
+  if (["cancelada", "entregue"].includes(req.status) || temPedidosAtivos(db, requisicaoId))
+    throw new Error("Esta requisição já tem pedidos. Cancele os pedidos para alterar os itens.");
+
+  return db.transaction((tx) => {
+    const { itens, novos, categoriasCriadas } = resolverItens(tx as unknown as DB, p);
+    const atuais = new Map(
+      tx.select().from(requisicaoItens).where(eq(requisicaoItens.requisicaoId, requisicaoId)).all().map((i) => [i.id, i]),
+    );
+    const mantidos = new Set<number>();
+    for (const i of itens) {
+      const atual = i.id ? atuais.get(i.id) : undefined;
+      if (atual && atual.materialId === i.materialId) {
+        mantidos.add(atual.id);
+        tx.update(requisicaoItens).set({ quantidade: i.quantidade, especificacao: i.especificacao }).where(eq(requisicaoItens.id, atual.id)).run();
+      } else {
+        tx.insert(requisicaoItens).values({ requisicaoId, materialId: i.materialId, quantidade: i.quantidade, especificacao: i.especificacao }).run();
+      }
+    }
+    // Mesma validação da criação (src/lib/validacao.ts).
+    const cab = requisicaoSchema.parse({
+      obraId: p.obra.id,
+      solicitante: p.entrada.solicitante,
+      dataPedido: p.dataPedido,
+      dataNecessidade: p.entrada.dataNecessidade,
+      urgente: p.urgente,
+      origemTexto: p.entrada.origemTexto,
+      observacoes: p.entrada.observacoes,
+      itens: itens.map(semId),
+    });
+    const removidos = [...atuais.keys()].filter((id) => !mantidos.has(id));
+    for (const id of removidos) tx.delete(requisicaoItens).where(eq(requisicaoItens.id, id)).run();
+
+    tx.update(requisicoes)
+      .set({
+        obraId: cab.obraId,
+        solicitante: cab.solicitante,
+        dataPedido: cab.dataPedido,
+        dataNecessidade: cab.dataNecessidade,
+        urgente: cab.urgente,
+        origemTexto: cab.origemTexto,
+        observacoes: cab.observacoes,
+      })
+      .where(eq(requisicoes.id, requisicaoId))
+      .run();
+    recalcularStatusRequisicao(tx as unknown as DB, requisicaoId);
+    return { id: requisicaoId, novos, categoriasCriadas, removidos: removidos.length };
+  });
 }
