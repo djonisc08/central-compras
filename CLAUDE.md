@@ -19,7 +19,7 @@ Sistema pessoal do comprador de uma construtora. Roda local (Next.js + SQLite). 
 - `scripts/` — `seed.ts`, `backup.ts` e os scripts de gravação usados pelas skills.
 
 ## Skills do projeto (.claude/skills)
-- `nova-requisicao`, `importar-orcamento`, `mensagem-cotacao`, `relatorio-mensal`.
+- `nova-requisicao`, `importar-orcamento`, `mensagem-cotacao`, `relatorio-mensal`, `sistema` (reiniciar/atualizar no Windows: `reiniciar.ps1`, `atualizar.ps1`).
 - Scripts que elas usam: `npm run ctx`, `gravar:requisicao`, `gravar:proposta`, `ler:planilha`, `mensagem`, `relatorio` (detalhes no topo de cada arquivo em `scripts/`).
 - Consultas: sempre `npm run --silent ctx -- ...` (JSON). Gravações: sempre prévia → OK do usuário → `--confirmar`.
 
