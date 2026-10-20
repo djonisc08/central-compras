@@ -3,6 +3,8 @@
 import { and, asc, desc, eq, inArray, like, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import {
+  propostaItens,
+  requisicaoItens,
   avaliacoesFornecedor,
   entregas,
   fornecedores,
@@ -122,6 +124,48 @@ export function gerarPedidos(db: DB, entrada: GerarPedidosInput) {
   });
   recalcularStatusRequisicao(db, dados.requisicaoId);
   return ids;
+}
+
+/**
+ * Itens que ficaram sem fornecedor no fechamento vão para uma requisição de SALDO
+ * (mesma obra e dados), que segue em cotação com outros fornecedores.
+ */
+export function separarSaldo(db: DB, requisicaoId: number) {
+  const mapa = obterMapa(db, requisicaoId);
+  if (!mapa) throw new Error("Requisição não encontrada");
+  const faltando = mapa.resumo.linhas.filter((l) => l.propostaEscolhidaId == null).map((l) => l.item.id);
+  if (!faltando.length) return null;
+  if (faltando.length === mapa.resumo.linhas.length) throw new Error("Escolha o fornecedor de pelo menos um item");
+  const r = db.select().from(requisicoes).where(eq(requisicoes.id, requisicaoId)).get()!;
+  return db.transaction((tx) => {
+    const saldoId = tx
+      .insert(requisicoes)
+      .values({
+        obraId: r.obraId,
+        solicitante: r.solicitante,
+        dataPedido: r.dataPedido,
+        dataNecessidade: r.dataNecessidade,
+        urgente: r.urgente,
+        origemTexto: r.origemTexto,
+        observacoes: [`Saldo da requisição #${requisicaoId}: itens que não foram fechados com os primeiros fornecedores.`, r.observacoes].filter(Boolean).join("\n"),
+        status: "aberta",
+      })
+      .returning({ id: requisicoes.id })
+      .get().id;
+    tx.delete(propostaItens).where(inArray(propostaItens.requisicaoItemId, faltando)).run();
+    tx.update(requisicaoItens).set({ requisicaoId: saldoId }).where(inArray(requisicaoItens.id, faltando)).run();
+    return saldoId;
+  });
+}
+
+/** Fecha a cotação: separa o saldo (itens sem fornecedor) e gera os pedidos do que foi fechado. */
+export function fecharCotacao(db: DB, entrada: GerarPedidosInput & { separarSaldo?: boolean }) {
+  return db.transaction((tx) => {
+    const t = tx as unknown as DB;
+    const saldoId = entrada.separarSaldo ? separarSaldo(t, entrada.requisicaoId) : null;
+    const pedidos = gerarPedidos(t, entrada);
+    return { pedidos, saldoId };
+  });
 }
 
 // ---------------------------------------------------------------- leitura

@@ -40,7 +40,7 @@ export function mensagemCotacao(d: DadosMensagemCotacao): string {
     "",
     ...linhas,
     "",
-    "Por favor, informe: preço unitário (com ou sem IPI), frete, prazo de entrega (e a partir de quando conta), condição de pagamento, desconto à vista e validade da proposta.",
+    "Por favor, informe: preço unitário (com ou sem IPI), frete, prazo de entrega (e a partir de quando conta), condição de pagamento, desconto à vista e validade da proposta. Se não tiver algum item, pode cotar só os que tiver.",
     d.urgente ? "Como é urgente, se conseguir me responder ainda hoje agradeço muito!" : "Obrigado!",
   ].join("\n");
 }

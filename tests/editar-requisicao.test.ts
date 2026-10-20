@@ -72,3 +72,30 @@ describe("editar requisição antes dos pedidos", () => {
     expect(() => editar([{ materialId: cimento, quantidade: 1 }])).toThrow(/pedidos/);
   });
 });
+
+describe("fechar cotação com itens sem fornecedor", () => {
+  it("gera o pedido do que fechou e manda o resto para uma requisição de saldo", async () => {
+    const { fecharCotacao } = await import("@/server/dados/pedidos");
+    const [i1, i2] = obterRequisicao(db, reqId)!.itens;
+    // Fornecedor só tem o cimento: tira o preço da cal deixando-a sem vencedor.
+    const prop = listarPropostas(db, reqId)[0];
+    salvarProposta(db, {
+      requisicaoId: reqId,
+      fornecedorId: prop.fornecedorId,
+      dataCotacao: "2026-10-20",
+      itens: [
+        { requisicaoItemId: i1.id, precoUnitarioCentavos: 3800 },
+        { requisicaoItemId: i2.id, precoUnitarioCentavos: 0, disponivel: false },
+      ],
+    });
+    marcarMenoresPrecos(db, reqId);
+    const r = fecharCotacao(db, { requisicaoId: reqId, separarSaldo: true });
+    expect(r.pedidos).toHaveLength(1);
+    expect(r.saldoId).toBeTruthy();
+    expect(obterRequisicao(db, reqId)!.itens.map((i) => i.material)).toEqual(["Cimento CPII 50kg"]);
+    const saldo = obterRequisicao(db, r.saldoId!)!;
+    expect(saldo.itens.map((i) => i.material)).toEqual(["Cal CH-III 20kg"]);
+    expect(saldo.status).toBe("aberta");
+    expect(saldo.observacoes).toMatch(/Saldo da requisição/);
+  });
+});

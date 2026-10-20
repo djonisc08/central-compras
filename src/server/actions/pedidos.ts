@@ -8,7 +8,7 @@ import {
   avaliarFornecedor,
   cancelarPedido,
   emitirPedido,
-  gerarPedidos,
+  fecharCotacao,
   registrarEntrega,
 } from "@/server/dados/pedidos";
 import type { AprovacaoInput, AvaliacaoInput, EmissaoInput, EntregaInput, GerarPedidosInput } from "@/lib/validacao";
@@ -19,8 +19,8 @@ function comRefresh<T>(r: ReturnType<typeof executar<T>>) {
   return r;
 }
 
-export async function gerarPedidosAction(dados: GerarPedidosInput) {
-  return comRefresh(executar(() => gerarPedidos(getDb(), dados)));
+export async function gerarPedidosAction(dados: GerarPedidosInput & { separarSaldo?: boolean }) {
+  return comRefresh(executar(() => fecharCotacao(getDb(), dados)));
 }
 
 export async function aprovarPedidoAction(id: number, dados: AprovacaoInput, emitirJunto?: { prazoPrometido?: string }) {

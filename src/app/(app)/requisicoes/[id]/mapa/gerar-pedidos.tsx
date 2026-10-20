@@ -19,7 +19,16 @@ import { cn } from "@/lib/utils";
 import { gerarPedidosAction } from "@/server/actions/pedidos";
 import type { PreviaPedido } from "@/server/dados/pedidos";
 
-export function GerarPedidos({ requisicaoId, previa }: { requisicaoId: number; previa: PreviaPedido[] }) {
+export function GerarPedidos({
+  requisicaoId,
+  previa,
+  semFornecedor = [],
+}: {
+  requisicaoId: number;
+  previa: PreviaPedido[];
+  /** Itens sem vencedor: vão para uma requisição de saldo. */
+  semFornecedor?: string[];
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [pendente, iniciar] = useTransition();
@@ -32,11 +41,13 @@ export function GerarPedidos({ requisicaoId, previa }: { requisicaoId: number; p
 
   function gerar() {
     iniciar(async () => {
-      const r = await gerarPedidosAction({ requisicaoId, formas });
+      const r = await gerarPedidosAction({ requisicaoId, formas, separarSaldo: semFornecedor.length > 0 });
       if (!r.ok) return void toast.error(r.erro);
-      toast.success(r.dados.length === 1 ? "Pedido gerado: aguardando aprovação" : `${r.dados.length} pedidos gerados: aguardando aprovação`);
+      const { pedidos, saldoId } = r.dados;
+      toast.success(pedidos.length === 1 ? "Pedido gerado: aguardando aprovação" : `${pedidos.length} pedidos gerados: aguardando aprovação`);
+      if (saldoId) toast.info(`Saldo: ${semFornecedor.length} item(ns) foram para a requisição #${saldoId}, para cotar com outros fornecedores.`, { duration: 10000 });
       setAberto(false);
-      router.push(r.dados.length === 1 ? `/pedidos/${r.dados[0]}` : `/pedidos?requisicao=${requisicaoId}`);
+      router.push(saldoId ? `/requisicoes/${saldoId}` : pedidos.length === 1 ? `/pedidos/${pedidos[0]}` : `/pedidos?requisicao=${requisicaoId}`);
     });
   }
 
@@ -44,7 +55,7 @@ export function GerarPedidos({ requisicaoId, previa }: { requisicaoId: number; p
     <Dialog open={aberto} onOpenChange={setAberto}>
       <DialogTrigger asChild>
         <Button size="lg" variant="sucesso">
-          <FileCheck2Icon /> Gerar {previa.length === 1 ? "pedido" : `${previa.length} pedidos`}
+          <FileCheck2Icon /> Fechar e gerar {previa.length === 1 ? "pedido" : `${previa.length} pedidos`}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
@@ -52,7 +63,20 @@ export function GerarPedidos({ requisicaoId, previa }: { requisicaoId: number; p
           <DialogTitle>Gerar pedido de compra</DialogTitle>
           <DialogDescription>Um pedido por fornecedor vencedor. Escolha a forma de pagamento; os pedidos ficam aguardando aprovação.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-3">
+        <div className="grid max-h-[60vh] gap-3 overflow-y-auto">
+          {semFornecedor.length > 0 && (
+            <div className="rounded-lg border border-st-atencao/40 bg-st-atencao-bg px-3 py-2.5 text-[13px]">
+              <div className="font-medium">
+                {semFornecedor.length} {semFornecedor.length === 1 ? "item ainda não tem fornecedor" : "itens ainda não têm fornecedor"}
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {semFornecedor.join(" · ")}
+              </div>
+              <div className="mt-1 text-xs">
+                Eles vão para uma <strong>requisição de saldo</strong> (mesma obra), para você cotar com outros fornecedores. O que já está fechado vira pedido agora.
+              </div>
+            </div>
+          )}
           {previa.map((p) => {
             const chave = String(p.propostaId);
             const forma = formas[chave];

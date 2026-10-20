@@ -91,7 +91,7 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
             )}
             <Button asChild disabled={mapa.propostas.length === 0}>
               <Link href={`/requisicoes/${r.id}/mapa`}>
-                <GridIcon /> Mapa comparativo
+                <GridIcon /> Comparar e fechar
               </Link>
             </Button>
             <AcoesRequisicao id={r.id} status={r.status} urgente={r.urgente} dataNecessidade={r.dataNecessidade} />
@@ -193,6 +193,23 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
                 <CardDescription>Totais com frete. A comparação item a item está no mapa.</CardDescription>
               </div>
             </CardHeader>
+            {mapa.propostas.length > 0 && itensEditaveis && (
+              <div className="mx-5 mb-3 flex flex-col gap-3 rounded-xl border border-primary/30 bg-accent/40 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-[13px]">
+                  <div className="font-medium">
+                    {resumo.itensComVencedor} de {resumo.totalItens} itens com fornecedor escolhido
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Veja os orçamentos lado a lado, escolha quem leva cada item (pode dividir entre fornecedores) e gere os pedidos.
+                  </div>
+                </div>
+                <Button asChild className="shrink-0">
+                  <Link href={`/requisicoes/${r.id}/mapa`}>
+                    <GridIcon /> Comparar e fechar
+                  </Link>
+                </Button>
+              </div>
+            )}
             <CardContent>
               {resumo.colunas.length === 0 ? (
                 <Vazio

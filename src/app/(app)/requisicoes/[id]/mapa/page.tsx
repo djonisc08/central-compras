@@ -30,7 +30,8 @@ export default async function MapaPage({ params }: PageProps<"/requisicoes/[id]/
   const ultimos = ultimosPrecosPagos(db, r.itens.map((i) => i.materialId));
   const comPedidos = temPedidosAtivos(db, r.id);
   const editavel = ["aberta", "cotando", "aguardando_aprovacao"].includes(r.status) && !comPedidos;
-  const prontoParaPedido = editavel && mapa.resumo.totalItens > 0 && mapa.resumo.itensComVencedor === mapa.resumo.totalItens;
+  const prontoParaPedido = editavel && mapa.resumo.itensComVencedor > 0;
+  const semFornecedor = mapa.resumo.linhas.filter((l) => l.propostaEscolhidaId == null).map((l) => l.item.material);
   const previa = prontoParaPedido ? previaPedidos(db, r.id) : [];
   const pedidosDaReq = listarPedidos(db, { requisicaoId: r.id }).filter((p) => p.status !== "cancelado");
 
@@ -76,7 +77,7 @@ export default async function MapaPage({ params }: PageProps<"/requisicoes/[id]/
                 </a>
               </Button>
             )}
-            {prontoParaPedido && <GerarPedidos requisicaoId={r.id} previa={previa} />}
+            {prontoParaPedido && <GerarPedidos requisicaoId={r.id} previa={previa} semFornecedor={semFornecedor} />}
           </>
         }
       />
@@ -101,7 +102,16 @@ export default async function MapaPage({ params }: PageProps<"/requisicoes/[id]/
       )}
       {prontoParaPedido && (
         <div className="mb-4 rounded-xl border border-st-ok/30 bg-st-ok-bg/50 px-4 py-3 text-[13px]">
-          Todos os itens têm vencedor. Próximo passo: <strong>Gerar pedido</strong> (botão verde acima), escolhendo à vista ou a prazo.
+          {semFornecedor.length === 0 ? (
+            <>
+              Todos os itens têm fornecedor. Próximo passo: <strong>Fechar e gerar pedido</strong> (botão verde acima), escolhendo à vista ou a prazo.
+            </>
+          ) : (
+            <>
+              {mapa.resumo.itensComVencedor} de {mapa.resumo.totalItens} itens fechados. Pode <strong>fechar agora</strong> (botão verde acima): os{" "}
+              {semFornecedor.length} sem fornecedor vão para uma requisição de saldo. Ou lance outra proposta para eles antes.
+            </>
+          )}
         </div>
       )}
       {mapa.propostas.length === 0 ? (

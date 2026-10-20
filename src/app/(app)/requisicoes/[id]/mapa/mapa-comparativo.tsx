@@ -399,10 +399,10 @@ export function MapaComparativo({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button size="xs" variant="outline" onClick={() => vencerTudo(c.proposta.id)} disabled={pendente}>
-                              Vencer tudo
+                              Fechar com este
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Marca este fornecedor em todos os itens que ele cotou</TooltipContent>
+                          <TooltipContent>Escolhe este fornecedor em todos os itens que ele cotou (os outros itens você escolhe tocando no preço)</TooltipContent>
                         </Tooltip>
                         <Button size="xs" variant="ghost" asChild>
                           <Link href={`/requisicoes/${requisicaoId}/proposta?fornecedor=${c.proposta.fornecedorId}`}>Editar</Link>
