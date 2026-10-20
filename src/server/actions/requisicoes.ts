@@ -15,6 +15,11 @@ import {
   salvarProposta,
 } from "@/server/dados/requisicoes";
 import type { PropostaInput, RequisicaoInput } from "@/lib/validacao";
+import {
+  gravarRequisicao,
+  prepararRequisicao,
+  type RequisicaoCompletaEntrada,
+} from "@/server/dados/requisicao-completa";
 import { executar } from "./resultado";
 
 function comRefresh<T>(r: ReturnType<typeof executar<T>>) {
@@ -63,4 +68,13 @@ export async function marcarFornecedorVencedorAction(requisicaoId: number, propo
 
 export async function limparVencedoresAction(requisicaoId: number) {
   return comRefresh(executar(() => limparVencedores(getDb(), requisicaoId)));
+}
+
+export async function criarRequisicaoCompletaAction(dados: RequisicaoCompletaEntrada) {
+  return executar(() => {
+    const db = getDb();
+    const preparada = prepararRequisicao(db, dados);
+    const r = gravarRequisicao(db, preparada);
+    return { ...r, avisos: preparada.avisos };
+  });
 }
