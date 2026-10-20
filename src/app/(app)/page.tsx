@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { AlertTriangleIcon, ArrowRightIcon, ClipboardPasteIcon, FileBarChartIcon, ClipboardListIcon, FlameIcon, StampIcon, TruckIcon } from "lucide-react";
+import { AlertTriangleIcon, ArrowRightIcon, CalendarDaysIcon, ClipboardPasteIcon, FileBarChartIcon, ClipboardListIcon, FlameIcon, StampIcon, TruckIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { entregasPendentes, gastoPorObraNoPeriodo, resumoOperacional } from "@/server/dados/painel";
 import { listarRequisicoes } from "@/server/dados/requisicoes";
@@ -13,6 +13,7 @@ import { Vazio } from "@/components/vazio";
 import { diasEntre, fimDoMes, formatarData, formatarMes, hojeISO, inicioDoMes, prazoRelativo } from "@/lib/datas";
 import { formatarReais } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
+import { SeletorDia } from "./dia/seletor-dia";
 
 export default async function PainelPage() {
   await connection();
@@ -32,6 +33,12 @@ export default async function PainelPage() {
         descricao={new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${hoje}T12:00:00`))}
         acoes={
           <>
+          <SeletorDia de={hoje} ate={hoje} compacto />
+          <Button variant="outline" asChild>
+            <Link href="/dia">
+              <CalendarDaysIcon /> Meu dia
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <a href={`/imprimir/relatorio?mes=${hoje.slice(0, 7)}`} target="_blank" rel="noreferrer">
               <FileBarChartIcon /> Relatório do mês

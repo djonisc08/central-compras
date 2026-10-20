@@ -8,8 +8,11 @@
  *   npm run ctx -- requisicoes            (em andamento)
  *   npm run ctx -- requisicao 125         (itens, propostas e ids)
  *   npm run ctx -- buscar "cp2" "ferro 3/8" "vaso pcd"
+ *   npm run ctx -- dia 2026-10-10 [2026-10-16]   (tudo o que aconteceu no dia/intervalo)
  */
 import { getDb } from "../src/db/client";
+import { hojeISO } from "../src/lib/datas";
+import { atividadesNoPeriodo, resumirAtividades } from "../src/server/dados/atividades";
 import { buscarMateriais } from "../src/lib/normalizar";
 import {
   catalogoParaBusca,
@@ -28,6 +31,11 @@ const saida = (x: unknown) => console.log(JSON.stringify(x, null, 2));
 
 rodar(() => {
   switch (assunto) {
+    case "dia": {
+      const [de = hojeISO(), ate = de] = resto;
+      const lista = atividadesNoPeriodo(db, de, ate);
+      return saida({ de, ate, resumo: resumirAtividades(lista), atividades: lista });
+    }
     case "obras":
       return saida(
         listarObras(db).map((o) => ({ id: o.id, nome: o.nome, status: o.status, endereco: o.endereco, cnpj: o.cnpj, cno: o.cno })),

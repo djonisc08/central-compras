@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2Icon,
+  CalendarDaysIcon,
   ClipboardListIcon,
   LayoutDashboardIcon,
   PackageIcon,
@@ -18,6 +19,7 @@ type Item = { href: string; rotulo: string; curto: string; icone: LucideIcon; ce
 
 const ITENS: Item[] = [
   { href: "/", rotulo: "Painel", curto: "Painel", icone: LayoutDashboardIcon, celular: true },
+  { href: "/dia", rotulo: "Meu dia", curto: "Dia", icone: CalendarDaysIcon },
   { href: "/requisicoes", rotulo: "Requisições", curto: "Requisições", icone: ClipboardListIcon, celular: true },
   { href: "/pedidos", rotulo: "Pedidos", curto: "Pedidos", icone: ReceiptTextIcon, celular: true },
   { href: "/fornecedores", rotulo: "Fornecedores", curto: "Fornec.", icone: TruckIcon, celular: true },
