@@ -24,7 +24,7 @@ import { criarCategoria, listarCategorias, salvarFornecedor } from "../src/serve
 import { aprovarEEmitir, gerarPedidos } from "../src/server/dados/pedidos";
 import { gravarRequisicao, prepararRequisicao, type ItemRequisicaoEntrada } from "../src/server/dados/requisicao-completa";
 import { marcarMenoresPrecos, salvarProposta } from "../src/server/dados/requisicoes";
-import { argumentos, falhar, reais, rodar, URL_APP } from "./_comum";
+import { argumentos, exigirApagarMeusDados, falhar, reais, rodar, URL_APP } from "./_comum";
 import { inserirBase, inserirCotacaoVasos } from "./_base";
 
 const { tem, texto } = argumentos();
@@ -85,6 +85,7 @@ rodar(() => {
   }
 
   if (existe) {
+    exigirApagarMeusDados(CAMINHO_DB);
     const pasta = path.join(path.dirname(CAMINHO_DB), "backups");
     fs.mkdirSync(pasta, { recursive: true });
     const destino = path.join(pasta, `antes-de-iniciar-real-${Date.now()}.db`);

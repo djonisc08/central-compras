@@ -1,6 +1,8 @@
 /**
  * Cópia de segurança do banco: npm run backup
  * Gera data/backups/compras-AAAA-MM-DD-HHMM.db (cópia consistente, mesmo com o app aberto).
+ * Também copia para a nuvem: pasta em COMPRAS_BACKUP_NUVEM ou, no Windows com OneDrive,
+ * "OneDrive/Central de Compras - backups" (sincroniza sozinho).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,6 +26,19 @@ db.backup(destino)
     db.close();
     const kb = Math.round(fs.statSync(destino).size / 1024);
     console.log(`Backup salvo: ${destino} (${kb} KB)`);
+    const nuvem =
+      process.env.COMPRAS_BACKUP_NUVEM ?? (process.env.OneDrive ? path.join(process.env.OneDrive, "Central de Compras - backups") : null);
+    if (nuvem) {
+      try {
+        fs.mkdirSync(nuvem, { recursive: true });
+        fs.copyFileSync(destino, path.join(nuvem, path.basename(destino)));
+        const naNuvem = fs.readdirSync(nuvem).filter((f) => f.startsWith("compras-") && f.endsWith(".db")).sort().reverse();
+        for (const f of naNuvem.slice(60)) fs.rmSync(path.join(nuvem, f));
+        console.log(`Cópia na nuvem: ${nuvem}`);
+      } catch (e) {
+        console.warn(`Não consegui copiar para ${nuvem}:`, (e as Error).message);
+      }
+    }
     // Mantém os 30 backups mais recentes.
     const antigos = fs
       .readdirSync(pasta)

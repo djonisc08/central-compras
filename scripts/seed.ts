@@ -12,11 +12,13 @@ import { sql } from "drizzle-orm";
 import { CAMINHO_DB, getDb } from "../src/db/client";
 import * as s from "../src/db/schema";
 import { hojeISO, somarDias } from "../src/lib/datas";
+import { exigirApagarMeusDados } from "./_comum";
 import { inserirBase, inserirCotacaoVasos, nomesCategorias, type Cat, type MatSeed } from "./_base";
 
 const reset = process.argv.includes("--reset");
 
 if (reset && fs.existsSync(CAMINHO_DB)) {
+  exigirApagarMeusDados(CAMINHO_DB);
   const pasta = path.join(path.dirname(CAMINHO_DB), "backups");
   fs.mkdirSync(pasta, { recursive: true });
   const destino = path.join(pasta, `antes-do-seed-${Date.now()}.db`);

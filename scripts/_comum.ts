@@ -118,3 +118,15 @@ export function moverParaProcessados(arquivo: string | null | undefined, hoje: s
 export function rodapePrevia(comando: string) {
   console.log(`\n→ PRÉVIA: nada foi gravado. Para gravar, rode de novo com --confirmar:\n  ${comando} --confirmar\n`);
 }
+
+/** Trava para scripts que APAGAM o banco: exige --apagar-meus-dados quando já existe banco em uso. */
+export function exigirApagarMeusDados(caminho: string) {
+  if (fs.existsSync(caminho) && !process.argv.includes("--apagar-meus-dados")) {
+    console.error(
+      "\n⛔ Já existe um banco com os seus dados em " + caminho + ".\n" +
+        "   Este comando APAGA tudo e recria do zero. Se é isso mesmo, repita com --apagar-meus-dados\n" +
+        "   (um backup é feito antes). Para atualizar o sistema use só: git pull · npm install · npm run dev\n",
+    );
+    process.exit(1);
+  }
+}
