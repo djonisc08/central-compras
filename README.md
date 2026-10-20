@@ -23,6 +23,23 @@ Abra **http://localhost:3000**.
 
 O banco fica em `data/compras.db` e é criado sozinho na primeira execução.
 
+### Windows: passo a passo
+
+Use o **PowerShell normal** (não precisa ser administrador):
+
+```powershell
+cd $HOME
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # só na primeira vez; responda S
+git clone https://github.com/djonisc08/central-compras.git
+cd central-compras
+npm install
+npm run seed
+npm run dev
+```
+
+- Não rode dentro de `C:\Windows\System32` (pasta protegida): por isso o `cd $HOME`.
+- Para atualizar com as novidades: `cd $HOME\central-compras` e depois `git pull` e `npm install`.
+
 ### Abrir no celular (mesma rede Wi-Fi)
 
 ```bash
