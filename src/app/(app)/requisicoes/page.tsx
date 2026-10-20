@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ClipboardListIcon, PlusIcon } from "lucide-react";
+import { ClipboardListIcon, ClipboardPasteIcon, PlusIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { STATUS_REQUISICAO, type StatusRequisicao } from "@/db/schema";
 import { listarObras } from "@/server/dados/cadastros";
@@ -46,11 +46,18 @@ export default async function RequisicoesPage({ searchParams }: PageProps<"/requ
         titulo="Requisições"
         descricao="Pedidos de material das obras, do recebimento à entrega."
         acoes={
-          <Button asChild>
-            <Link href="/requisicoes/nova">
-              <PlusIcon /> Nova requisição
-            </Link>
-          </Button>
+          <>
+            <Button variant="outline" asChild>
+              <Link href="/requisicoes/nova">
+                <PlusIcon /> Digitar
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/requisicoes/nova?colar=1">
+                <ClipboardPasteIcon /> Colar pedido
+              </Link>
+            </Button>
+          </>
         }
       />
       <FiltrosRequisicoes obras={obras.map((o) => ({ id: o.id, nome: o.nome }))} />

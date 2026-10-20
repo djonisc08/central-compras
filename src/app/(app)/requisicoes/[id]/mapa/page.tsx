@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { ChevronLeftIcon, FileSpreadsheetIcon, PlusIcon, PrinterIcon } from "lucide-react";
+import { ChevronLeftIcon, FileSpreadsheetIcon, LandmarkIcon, PlusIcon, PrinterIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { listarPedidos, previaPedidos } from "@/server/dados/pedidos";
 import { obterMapa, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
@@ -69,6 +69,13 @@ export default async function MapaPage({ params }: PageProps<"/requisicoes/[id]/
                 <FileSpreadsheetIcon /> Excel
               </a>
             </Button>
+            {pedidosDaReq.length > 0 && (
+              <Button variant="outline" asChild>
+                <a href={`/imprimir/financeiro/${r.id}`} target="_blank" rel="noreferrer">
+                  <LandmarkIcon /> Resumo p/ financeiro
+                </a>
+              </Button>
+            )}
             {prontoParaPedido && <GerarPedidos requisicaoId={r.id} previa={previa} />}
           </>
         }

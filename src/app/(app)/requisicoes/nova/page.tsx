@@ -10,8 +10,9 @@ import { FormRequisicao } from "./form-requisicao";
 
 export const metadata: Metadata = { title: "Nova requisição" };
 
-export default async function NovaRequisicaoPage() {
+export default async function NovaRequisicaoPage({ searchParams }: PageProps<"/requisicoes/nova">) {
   await connection();
+  const sp = await searchParams;
   const db = getDb();
   const obras = listarObras(db).filter((o) => o.status !== "concluida");
   const materiais = listarMateriais(db, { somenteAtivos: true });
@@ -25,11 +26,12 @@ export default async function NovaRequisicaoPage() {
           </Link>
         }
         titulo="Nova requisição"
-        descricao="Lance os itens como chegaram da obra. Enter na quantidade adiciona a próxima linha."
+        descricao="Cole o pedido do WhatsApp ou digite os itens. Enter na quantidade adiciona a próxima linha."
       />
       <FormRequisicao
         hoje={hojeISO()}
-        obras={obras.map((o) => ({ id: o.id, nome: o.nome, status: o.status }))}
+        obras={obras.map((o) => ({ id: o.id, nome: o.nome, status: o.status, cnpj: o.cnpj, cno: o.cno, endereco: o.endereco }))}
+        abrirColar={sp.colar === "1"}
         materiais={materiais.map((m) => ({
           id: m.id,
           nomePadronizado: m.nomePadronizado,

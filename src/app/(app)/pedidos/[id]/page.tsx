@@ -106,9 +106,14 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Itens</CardTitle>
+              <div className="flex gap-3">
               <Link href={`/requisicoes/${p.requisicaoId}/mapa`} className="text-xs text-primary hover:underline">
                 Requisição #{p.requisicaoId} · mapa
               </Link>
+              <a href={`/imprimir/financeiro/${p.requisicaoId}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                Resumo p/ financeiro
+              </a>
+              </div>
             </CardHeader>
             <Table>
               <TableHeader>

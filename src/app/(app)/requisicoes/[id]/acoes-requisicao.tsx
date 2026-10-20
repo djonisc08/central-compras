@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { BanIcon, FlameIcon, MoreHorizontalIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
+import { BanIcon, FlameIcon, LandmarkIcon, MoreHorizontalIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,11 @@ export function AcoesRequisicao({
         <DropdownMenuItem asChild>
           <a href={`/imprimir/mapa/${id}`} target="_blank" rel="noreferrer">
             <PrinterIcon /> Imprimir mapa
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href={`/imprimir/financeiro/${id}`} target="_blank" rel="noreferrer">
+            <LandmarkIcon /> Resumo p/ financeiro
           </a>
         </DropdownMenuItem>
         {status !== "cancelada" && status !== "entregue" && (

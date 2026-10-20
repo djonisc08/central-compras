@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { AlertTriangleIcon, ArrowRightIcon, FileBarChartIcon, ClipboardListIcon, FlameIcon, PlusIcon, StampIcon, TruckIcon } from "lucide-react";
+import { AlertTriangleIcon, ArrowRightIcon, ClipboardPasteIcon, FileBarChartIcon, ClipboardListIcon, FlameIcon, StampIcon, TruckIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { entregasPendentes, gastoPorObraNoPeriodo, resumoOperacional } from "@/server/dados/painel";
 import { listarRequisicoes } from "@/server/dados/requisicoes";
@@ -38,8 +38,8 @@ export default async function PainelPage() {
             </a>
           </Button>
           <Button asChild>
-            <Link href="/requisicoes/nova">
-              <PlusIcon /> Nova requisição
+            <Link href="/requisicoes/nova?colar=1">
+              <ClipboardPasteIcon /> Colar pedido do WhatsApp
             </Link>
           </Button>
           </>
