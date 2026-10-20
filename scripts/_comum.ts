@@ -99,7 +99,7 @@ export function tabela(cabecalho: string[], linhas: (string | number)[][]) {
 export function avisar(avisos: string[]) {
   if (!avisos.length) return;
   console.log("\n⚠ Atenção:");
-  for (const a of avisos) console.log(`  • ${a}`);
+  for (const a of new Set(avisos)) console.log(`  • ${a}`);
 }
 
 /** Move o arquivo de origem para entrada/processados com data no nome. */
