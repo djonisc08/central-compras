@@ -78,7 +78,7 @@ db.insert(s.configEmpresa)
     id: 1,
     razaoSocial: "MAX INCORPORAÇÕES LTDA",
     nomeFantasia: "MAX Incorporações",
-    cnpj: null,
+    cnpj: "11249827000150",
     endereco: "R. Dr. Carlos Correa, 141 (escritório)",
     cidade: "Florianópolis – SC",
     telefone: "(48) 98448-5249",
