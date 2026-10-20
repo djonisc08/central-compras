@@ -97,7 +97,7 @@ Quando todos os itens têm vencedor, a requisição vai para **Aguardando aprova
 
 - **Backup:** `npm run backup` copia o banco para `data/backups/` (mantém os 30 mais recentes). Faça ao fim do dia ou antes de mexer em algo grande.
 - **Nunca edite `data/compras.db` na mão.** As skills e telas gravam por scripts validados.
-- **Recomeçar com dados de exemplo:** `npm run seed -- --reset` (faz backup antes de apagar).
+- **Recomeçar com dados de exemplo:** `npm run seed -- --reset` (faz backup antes de apagar). Se o sistema estiver aberto, **pare e rode `npm run dev` de novo** depois do reset.
 - Atualizações de estrutura do banco são aplicadas automaticamente ao abrir o sistema, sem perder dados.
 
 ---
