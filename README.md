@@ -3,8 +3,8 @@
 Sistema pessoal do comprador da construtora: **requisições das obras → cotação → mapa comparativo → pedido → entrega → indicadores**.
 Roda 100% no seu computador, sem mensalidade e sem chave de API. A "IA" é o Claude Code, por meio das skills do projeto.
 
-> **Status:** Sprint 1 concluída (cadastros, requisições, propostas, mapa comparativo, impressão e Excel).
-> Sprint 2 (pedidos, aprovação, entregas, avaliações e skills) e Sprint 3 (KPIs, gráficos, ranking e relatório mensal) vêm a seguir.
+> **Status:** Sprints 1 e 2 concluídas (cadastros, cotação, mapa, pedidos, aprovação, entregas, avaliação, relatório mensal e as 4 skills do Claude Code).
+> Sprint 3 (painel de KPIs com gráficos, histórico de preço por material e ranking de fornecedores) vem a seguir.
 
 ---
 
@@ -97,9 +97,61 @@ Quando todos os itens têm vencedor, a requisição vai para **Aguardando aprova
 - **Excel**: baixa o mapa com destaques e uma aba de dados "longa" (boa para tabela dinâmica).
 - **Fornecedores → Exportar cadastros**: planilha com fornecedores, materiais, obras e categorias (base limpa para importar no Sienge).
 
+### f) Gerar o pedido
+Com todos os itens com vencedor, aparece no mapa o botão verde **Gerar pedido**:
+- Um pedido por fornecedor vencedor. Escolha **à vista** (aplica o desconto da proposta) ou **a prazo**; o sistema mostra quanto economiza.
+- O pedido nasce **aguardando aprovação** (sem número).
+
+### g) Aprovar e emitir
+Em **Pedidos → abrir o pedido → Aprovar**:
+- Registre **quem aprovou** (Diretoria, Engenharia, Financeiro…) e a data.
+- Com **Emitir agora** ligado, o número **PC-AAAA-0001** é gerado na hora e a data de entrega prometida é calculada pelo prazo da proposta (ajustável).
+- **PDF do pedido**: A4 com faturamento da obra (razão social, CNPJ, CNO), local de entrega, itens, desconto, frete, condições e rodapé padrão.
+- **Enviar ao fornecedor**: abre o WhatsApp com o resumo do pedido (anexe o PDF).
+
+### h) Entrega e avaliação
+- **Registrar entrega**: data real, parcial ou final, conforme ou não conforme, observação (ex.: "3 sacos rasgados").
+- Pedido atrasado ganha alerta vermelho no pedido, na lista e no painel.
+- Ao concluir a entrega, o sistema pede a **avaliação** do fornecedor (preço, prazo, qualidade, atendimento — 1 a 5). Leva 10 segundos e alimenta o ranking.
+- Cancelou um pedido? A requisição volta para a cotação e você pode escolher outro vencedor.
+
+### i) Relatório do mês
+**Painel → Relatório do mês** abre a página para imprimir/PDF com KPIs, destaques, alertas, gasto por obra, curva ABC, fornecedores e variação de preços. Excel completo em `/api/exportar/relatorio?mes=AAAA-MM` (ou peça ao Claude: skill `relatorio-mensal`).
+
 ---
 
-## 3. Cadastros
+## 3. Usando o Claude Code (skills)
+
+Abra o Claude Code dentro da pasta do projeto (`cd central-compras` e depois `claude`) e fale normalmente. As skills cuidam do resto e **sempre mostram uma prévia e pedem seu OK antes de gravar**.
+
+| Você diz | Skill | O que acontece |
+|---|---|---|
+| "Chegou pedido da 189: *(cola a mensagem)*" ou deixa o print em `./entrada` | **nova-requisicao** | Identifica obra, itens, quantidades e prazo; casa com o catálogo (sugere material novo se precisar); mostra a tabela; grava após o OK |
+| "Manda cotação da requisição 126" | **mensagem-cotacao** | Mensagem de WhatsApp por fornecedor da categoria (com dados de faturamento), link wa.me, PDF e planilha para o fornecedor preencher |
+| "Chegou o orçamento da Roca" (PDF/foto/texto em `./entrada`) | **importar-orcamento** | Lê o orçamento, confere item a item (quantidade, unidade, IPI, prazo, validade), mostra o total para bater com o documento e grava após o OK |
+| "Importa a planilha que o fornecedor devolveu" | **importar-orcamento** | Lê a planilha da Central automaticamente, sem digitação |
+| "Relatório de outubro para a diretoria" | **relatorio-mensal** | Excel + PDF + resumo executivo pronto para e-mail |
+
+Pastas:
+- `entrada/` — onde você joga prints, PDFs e planilhas recebidas. Depois de importados, vão para `entrada/processados/`.
+- `entrada/rascunhos/` — rascunhos que o Claude monta para você conferir.
+- `saida/` — mensagens, planilhas de cotação e relatórios gerados.
+- `entrada/exemplos/` — exemplos de pedido de obra e orçamento para testar.
+
+Comandos usados pelas skills (você também pode rodar):
+
+| Comando | Para quê |
+|---|---|
+| `npm run ctx -- obras \| fornecedores \| materiais \| requisicoes \| requisicao 126 \| buscar "cp2"` | Consultas (somente leitura) |
+| `npm run gravar:requisicao -- --arquivo <json> [--confirmar]` | Grava requisição (sem `--confirmar` = prévia) |
+| `npm run gravar:proposta -- --arquivo <json> [--confirmar]` | Grava proposta |
+| `npm run ler:planilha -- entrada/<arquivo>.xlsx [--confirmar]` | Importa a planilha devolvida pelo fornecedor |
+| `npm run mensagem -- --requisicao 126 [--fornecedores 1,7]` | Kit de cotação em `saida/` |
+| `npm run relatorio -- --mes 2026-10 [--json]` | Relatório mensal |
+
+---
+
+## 4. Cadastros
 
 | Tela | Dica |
 |---|---|
@@ -110,7 +162,7 @@ Quando todos os itens têm vencedor, a requisição vai para **Aguardando aprova
 
 ---
 
-## 4. Cuidados com os dados
+## 5. Cuidados com os dados
 
 - **Backup:** `npm run backup` copia o banco para `data/backups/` (mantém os 30 mais recentes). Faça ao fim do dia ou antes de mexer em algo grande.
 - **Nunca edite `data/compras.db` na mão.** As skills e telas gravam por scripts validados.
@@ -119,7 +171,7 @@ Quando todos os itens têm vencedor, a requisição vai para **Aguardando aprova
 
 ---
 
-## 5. Comandos úteis
+## 6. Comandos úteis
 
 | Comando | O que faz |
 |---|---|
@@ -133,7 +185,7 @@ Quando todos os itens têm vencedor, a requisição vai para **Aguardando aprova
 
 ---
 
-## 6. Fórmulas dos indicadores
+## 7. Fórmulas dos indicadores
 
 | Indicador | Fórmula |
 |---|---|
@@ -147,7 +199,7 @@ Quando todos os itens têm vencedor, a requisição vai para **Aguardando aprova
 
 ---
 
-## 7. Estrutura técnica (resumo)
+## 8. Estrutura técnica (resumo)
 
 - **Next.js 16 (App Router) + TypeScript + Tailwind 4 + componentes no padrão shadcn/ui (Radix)**
 - **SQLite** (`better-sqlite3`) com **Drizzle ORM**; migrations em `src/db/migrations`

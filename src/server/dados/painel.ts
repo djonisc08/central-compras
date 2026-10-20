@@ -12,7 +12,7 @@ export function resumoOperacional(db: DB, hoje: string) {
     urgentesHoje: n(
       sql`select count(*) n from requisicoes where status in ('aberta','cotando','aguardando_aprovacao','aprovada') and (urgente = 1 or data_necessidade <= ${amanha})`,
     ),
-    aguardandoAprovacao: n(sql`select count(*) n from requisicoes where status = 'aguardando_aprovacao'`),
+    aguardandoAprovacao: n(sql`select count(*) n from pedidos where status = 'aguardando_aprovacao'`),
     entregasAtrasadas: n(
       sql`select count(*) n from pedidos p where p.status in ('emitido','entregue_parcial') and p.prazo_prometido < ${hoje}`,
     ),

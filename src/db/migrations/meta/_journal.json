@@ -15,6 +15,13 @@
       "when": 1792506055676,
       "tag": "0001_faturamento_obra_condicoes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792509382805,
+      "tag": "0002_pedidos_pagamento",
+      "breakpoints": true
     }
   ]
 }

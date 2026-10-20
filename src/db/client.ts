@@ -25,10 +25,25 @@ function abrir(arquivo: string): DB {
 }
 
 // Reaproveita a conexão entre recarregamentos do servidor de desenvolvimento.
-const globalParaDb = globalThis as unknown as { __comprasDb?: DB };
+const globalParaDb = globalThis as unknown as { __comprasDb?: DB; __comprasMigracoes?: number };
+
+function qtdMigracoes() {
+  try {
+    return fs.readdirSync(PASTA_MIGRATIONS).filter((f) => f.endsWith(".sql")).length;
+  } catch {
+    return 0;
+  }
+}
 
 export function getDb(): DB {
-  if (!globalParaDb.__comprasDb) globalParaDb.__comprasDb = abrir(CAMINHO_DB);
+  const qtd = qtdMigracoes();
+  if (!globalParaDb.__comprasDb) {
+    globalParaDb.__comprasDb = abrir(CAMINHO_DB);
+  } else if (globalParaDb.__comprasMigracoes !== qtd) {
+    // Chegou migration nova (ex.: git pull com o sistema aberto): aplica sem reiniciar.
+    migrate(globalParaDb.__comprasDb, { migrationsFolder: PASTA_MIGRATIONS });
+  }
+  globalParaDb.__comprasMigracoes = qtd;
   return globalParaDb.__comprasDb;
 }
 

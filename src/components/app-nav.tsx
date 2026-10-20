@@ -7,6 +7,7 @@ import {
   ClipboardListIcon,
   LayoutDashboardIcon,
   PackageIcon,
+  ReceiptTextIcon,
   SettingsIcon,
   TruckIcon,
   type LucideIcon,
@@ -18,9 +19,10 @@ type Item = { href: string; rotulo: string; curto: string; icone: LucideIcon; ce
 const ITENS: Item[] = [
   { href: "/", rotulo: "Painel", curto: "Painel", icone: LayoutDashboardIcon, celular: true },
   { href: "/requisicoes", rotulo: "Requisições", curto: "Requisições", icone: ClipboardListIcon, celular: true },
+  { href: "/pedidos", rotulo: "Pedidos", curto: "Pedidos", icone: ReceiptTextIcon, celular: true },
   { href: "/fornecedores", rotulo: "Fornecedores", curto: "Fornec.", icone: TruckIcon, celular: true },
   { href: "/materiais", rotulo: "Materiais", curto: "Materiais", icone: PackageIcon, celular: true },
-  { href: "/obras", rotulo: "Obras", curto: "Obras", icone: Building2Icon, celular: true },
+  { href: "/obras", rotulo: "Obras", curto: "Obras", icone: Building2Icon },
 ];
 
 const RODAPE: Item[] = [{ href: "/configuracoes", rotulo: "Configurações", curto: "Config.", icone: SettingsIcon }];

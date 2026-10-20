@@ -2,6 +2,8 @@
 import type ExcelJS from "exceljs";
 import type { DB } from "@/db/client";
 import { formatarData, hojeISO } from "@/lib/datas";
+import { FORMULAS } from "@/lib/kpis";
+import type { Indicadores } from "./dados/indicadores";
 import { atendePrazo, previsaoEntrega } from "@/lib/mapa";
 import {
   adicionarTabela,
@@ -10,6 +12,7 @@ import {
   dataExcel,
   estilizarCabecalho,
   FORMATO_NUMERO,
+  FORMATO_PCT,
   FORMATO_REAIS,
   novoWorkbook,
 } from "@/lib/excel";
@@ -372,5 +375,107 @@ export async function planilhaCotacaoFornecedor(db: DB, requisicaoId: number, fo
   meta.addRow(["linha_condicoes", C0 + 1]);
   meta.addRow(["chaves_condicoes", condicoes.map((c) => c[1]).join(",")]);
   r.itens.forEach((it, n) => meta.addRow([`item_${n + 1}`, it.id]));
+  return wb;
+}
+
+/** Relatório mensal para a diretoria: resumo, gastos, saving, fornecedores, preços e curva ABC. */
+export function planilhaRelatorio(db: DB, ind: Indicadores) {
+  const empresa = obterEmpresa(db);
+  const wb = novoWorkbook();
+  const ws = wb.addWorksheet("Resumo", { views: [{ showGridLines: false }] });
+  ws.getColumn(1).width = 46;
+  ws.getColumn(2).width = 22;
+  ws.getColumn(3).width = 60;
+  ws.getCell("A1").value = `${empresa.razaoSocial} — Relatório de compras`;
+  ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF0F4C5C" } };
+  ws.getCell("A2").value = `Período: ${formatarData(ind.periodo.inicio)} a ${formatarData(ind.periodo.fim)} · comparado a ${formatarData(ind.periodoAnterior.inicio)}–${formatarData(ind.periodoAnterior.fim)}`;
+  ws.getCell("A2").font = { size: 10, color: { argb: "FF555555" } };
+  const linhas: [string, number | string | null, string, string?][] = [
+    ["Gasto (pedidos emitidos)", ind.gasto / 100, FORMULAS.gasto, FORMATO_REAIS],
+    ["Pedidos emitidos", ind.qtdPedidos, ""],
+    ["Saving (vs último preço pago)", ind.saving / 100, FORMULAS.saving, FORMATO_REAIS],
+    ["Economia na cotação (cost avoidance)", ind.costAvoidance / 100, FORMULAS.costAvoidance, FORMATO_REAIS],
+    ["Lead time médio (dias)", ind.leadTimeMedio != null ? Number(ind.leadTimeMedio.toFixed(1)) : null, FORMULAS.leadTime],
+    ["% compras urgentes (meta < 5%)", ind.pctUrgentes, FORMULAS.urgentes, FORMATO_PCT],
+    ["Pontualidade dos fornecedores", ind.pontualidade, FORMULAS.pontualidade, FORMATO_PCT],
+    ["Entregas não conformes", ind.naoConformes, ""],
+  ];
+  const cab = ws.getRow(4);
+  ["Indicador", "Valor", "Como é calculado"].forEach((t, i) => (cab.getCell(i + 1).value = t));
+  estilizarCabecalho(cab);
+  linhas.forEach(([rot, v, formula, fmt], i) => {
+    const row = ws.getRow(5 + i);
+    row.getCell(1).value = rot;
+    row.getCell(1).font = { bold: true, size: 10 };
+    row.getCell(2).value = v;
+    if (fmt) row.getCell(2).numFmt = fmt;
+    row.getCell(3).value = formula;
+    row.getCell(3).font = { size: 9, color: { argb: "FF666666" } };
+    row.getCell(3).alignment = { wrapText: true, vertical: "top" };
+  });
+  let l = 5 + linhas.length + 1;
+  for (const [titulo, itens] of [
+    ["Destaques", ind.destaques],
+    ["Alertas", ind.alertas],
+  ] as const) {
+    ws.getRow(l).getCell(1).value = titulo;
+    ws.getRow(l).getCell(1).font = { bold: true, size: 11, color: { argb: titulo === "Alertas" ? "FFB42318" : "FF0F7B4A" } };
+    l++;
+    for (const t of itens.length ? itens : ["—"]) {
+      ws.getRow(l).getCell(1).value = `• ${t}`;
+      ws.mergeCells(l, 1, l, 3);
+      ws.getRow(l).getCell(1).alignment = { wrapText: true };
+      l++;
+    }
+    l++;
+  }
+
+  adicionarTabela(wb, "Gasto por obra", [
+    { titulo: "Obra", valor: (x) => x.nome, largura: 32 },
+    { titulo: "Gasto", valor: (x) => x.total, centavos: true, largura: 16 },
+    { titulo: "% do total", valor: (x) => (ind.gasto ? x.total / ind.gasto : 0), formato: FORMATO_PCT },
+  ], ind.gastoPorObra);
+  adicionarTabela(wb, "Gasto por categoria", [
+    { titulo: "Categoria", valor: (x) => x.nome, largura: 28 },
+    { titulo: "Gasto (itens)", valor: (x) => x.total, centavos: true, largura: 16 },
+  ], ind.gastoPorCategoria);
+  adicionarTabela(wb, "Fornecedores", [
+    { titulo: "Fornecedor", valor: (x) => x.fornecedor, largura: 32 },
+    { titulo: "Gasto", valor: (x) => x.gasto, centavos: true, largura: 16 },
+    { titulo: "Pedidos", valor: (x) => x.pedidos },
+    { titulo: "Pontualidade", valor: (x) => x.pontualidade, formato: FORMATO_PCT },
+    { titulo: "Nota média (1–5)", valor: (x) => (x.nota != null ? Number(x.nota.toFixed(1)) : null) },
+  ], ind.fornecedores);
+  adicionarTabela(wb, "Saving por item", [
+    { titulo: "Material", valor: (x) => x.material, largura: 40 },
+    { titulo: "Obra", valor: (x) => x.obra, largura: 22 },
+    { titulo: "Fornecedor", valor: (x) => x.fornecedor, largura: 28 },
+    { titulo: "Qtd.", valor: (x) => x.quantidade, formato: FORMATO_NUMERO },
+    { titulo: "Preço anterior", valor: (x) => x.anterior, centavos: true, largura: 14 },
+    { titulo: "Preço pago", valor: (x) => x.novo, centavos: true, largura: 14 },
+    { titulo: "Saving", valor: (x) => x.valor, centavos: true, largura: 14 },
+  ], [...ind.savingItens].sort((a, b) => b.valor - a.valor));
+  adicionarTabela(wb, "Variação de preços", [
+    { titulo: "Material", valor: (x) => x.material, largura: 40 },
+    { titulo: "Un.", valor: (x) => x.unidade, largura: 6 },
+    { titulo: "Preço médio anterior", valor: (x) => (x.precoAnterior != null ? Math.round(x.precoAnterior) : null), centavos: true, largura: 18 },
+    { titulo: "Preço médio atual", valor: (x) => Math.round(x.precoAtual), centavos: true, largura: 18 },
+    { titulo: "Variação", valor: (x) => x.variacao, formato: FORMATO_PCT },
+  ], ind.variacoes);
+  adicionarTabela(wb, "Curva ABC", [
+    { titulo: "Material", valor: (x) => x.material, largura: 40 },
+    { titulo: "Gasto", valor: (x) => x.valor, centavos: true, largura: 16 },
+    { titulo: "% do gasto", valor: (x) => x.participacao, formato: FORMATO_PCT },
+    { titulo: "% acumulado", valor: (x) => x.acumulado, formato: FORMATO_PCT },
+    { titulo: "Classe", valor: (x) => x.classe, largura: 8 },
+  ], ind.abc);
+  adicionarTabela(wb, "Pedidos do período", [
+    { titulo: "Pedido", valor: (x) => x.numero, largura: 15 },
+    { titulo: "Emissão", valor: (x) => dataExcel(x.data_emissao), largura: 12 },
+    { titulo: "Obra", valor: (x) => x.obra, largura: 24 },
+    { titulo: "Fornecedor", valor: (x) => x.fornecedor, largura: 30 },
+    { titulo: "Urgente", valor: (x) => (x.urgente ? "Sim" : ""), largura: 9 },
+    { titulo: "Valor", valor: (x) => x.valor, centavos: true, largura: 15 },
+  ], ind.pedidos);
   return wb;
 }

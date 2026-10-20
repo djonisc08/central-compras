@@ -122,3 +122,43 @@ export function mensagemErro(e: z.ZodError): string {
   const p = e.issues[0];
   return p ? p.message : "Dados inválidos";
 }
+
+// ------------------------------------------------------------------ pedidos
+
+export const gerarPedidosSchema = z.object({
+  requisicaoId: z.number().int(),
+  /** Forma de pagamento escolhida por proposta vencedora. */
+  formas: z.record(z.string(), z.enum(["prazo", "avista"])).default({}),
+  observacoes: textoOpcional,
+});
+export type GerarPedidosInput = z.input<typeof gerarPedidosSchema>;
+
+export const aprovacaoSchema = z.object({
+  aprovadoPor: z.string().trim().min(2, "Informe quem aprovou"),
+  dataAprovacao: dataISO,
+});
+export type AprovacaoInput = z.input<typeof aprovacaoSchema>;
+
+export const emissaoSchema = z.object({
+  dataEmissao: dataISO,
+  prazoPrometido: dataISO,
+});
+export type EmissaoInput = z.input<typeof emissaoSchema>;
+
+export const entregaSchema = z.object({
+  dataReal: dataISO,
+  parcial: z.boolean().default(false),
+  conforme: z.boolean().default(true),
+  observacao: textoOpcional,
+});
+export type EntregaInput = z.input<typeof entregaSchema>;
+
+const nota = z.number().int().min(1, "Nota de 1 a 5").max(5, "Nota de 1 a 5");
+export const avaliacaoSchema = z.object({
+  preco: nota,
+  prazo: nota,
+  qualidade: nota,
+  atendimento: nota,
+  comentario: textoOpcional,
+});
+export type AvaliacaoInput = z.input<typeof avaliacaoSchema>;

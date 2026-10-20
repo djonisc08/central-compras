@@ -44,3 +44,36 @@ export function mensagemCotacao(d: DadosMensagemCotacao): string {
     d.urgente ? "Como é urgente, se conseguir me responder ainda hoje agradeço muito!" : "Obrigado!",
   ].join("\n");
 }
+
+/** Mensagem de envio do pedido emitido ao fornecedor. */
+export function mensagemPedido(d: {
+  numero: string;
+  fornecedorContato: string | null;
+  empresa: string;
+  comprador: string | null;
+  obra: string;
+  endereco: string | null;
+  cep: string | null;
+  razaoSocial: string | null;
+  cnpj: string | null;
+  cno: string | null;
+  prazoPrometido: string | null;
+  condicao: string | null;
+  total: string;
+  itens: { material: string; quantidade: number; unidade: string }[];
+}) {
+  const saudacao = d.fornecedorContato ? `Olá, ${d.fornecedorContato.split(" ")[0]}!` : "Olá!";
+  return [
+    `${saudacao} Segue o *pedido de compra ${d.numero}* da ${d.empresa}.`,
+    "",
+    ...d.itens.map((i) => `• ${formatarNumero(i.quantidade)} ${i.unidade} — ${i.material}`),
+    "",
+    `*Total:* ${d.total}${d.condicao ? ` · ${d.condicao}` : ""}`,
+    `*Entrega até:* ${formatarData(d.prazoPrometido)}`,
+    `*Local:* ${d.obra}${d.endereco ? ` – ${d.endereco}` : ""}${d.cep ? ` – CEP ${d.cep}` : ""}`,
+    `*Faturar para:* ${d.razaoSocial ?? d.empresa}${d.cnpj ? ` – CNPJ ${formatarCnpj(d.cnpj)}` : ""}${d.cno ? ` – CNO ${d.cno}` : ""}`,
+    "",
+    `Por favor, informe o nº ${d.numero} na nota fiscal e confirme o recebimento deste pedido. O PDF segue em anexo.`,
+    d.comprador ? `Obrigado! ${d.comprador}` : "Obrigado!",
+  ].join("\n");
+}

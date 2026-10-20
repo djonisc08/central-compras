@@ -238,6 +238,11 @@ export const pedidos = sqliteTable(
     dataEmissao: text("data_emissao"),
     prazoPrometido: text("prazo_prometido"),
     status: text("status", { enum: STATUS_PEDIDO }).notNull().default("aguardando_aprovacao"),
+    /** "prazo" ou "avista". À vista aplica o desconto da proposta nos itens. */
+    formaPagamento: text("forma_pagamento", { enum: ["prazo", "avista"] }).notNull().default("prazo"),
+    descontoBp: integer("desconto_bp").notNull().default(0),
+    prazoEntregaDias: integer("prazo_entrega_dias"),
+    motivoCancelamento: text("motivo_cancelamento"),
     observacoes: text("observacoes"),
     criadoEm: criadoEm(),
   },

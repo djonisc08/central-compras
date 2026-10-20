@@ -156,12 +156,29 @@ export function reabrirRequisicao(db: DB, id: number) {
 }
 
 /**
- * Atualiza o status das fases de cotação a partir dos dados.
- * Fases de pedido (aprovada em diante) são tratadas pelo módulo de pedidos.
+ * Recalcula o status da requisição a partir dos dados:
+ * com pedidos ativos, o status segue os pedidos; sem pedidos, segue a cotação.
  */
 export function recalcularStatusRequisicao(db: DB, id: number) {
   const req = db.select().from(requisicoes).where(eq(requisicoes.id, id)).get();
-  if (!req || !["aberta", "cotando", "aguardando_aprovacao"].includes(req.status)) return;
+  if (!req || req.status === "cancelada") return;
+
+  const ativos = db
+    .select({ status: pedidos.status })
+    .from(pedidos)
+    .where(and(eq(pedidos.requisicaoId, id), sql`${pedidos.status} != 'cancelado'`))
+    .all()
+    .map((p) => p.status);
+
+  if (ativos.length) {
+    let novoP: StatusRequisicao;
+    if (ativos.includes("aguardando_aprovacao")) novoP = "aguardando_aprovacao";
+    else if (ativos.every((s) => s === "entregue")) novoP = "entregue";
+    else if (ativos.every((s) => s === "aprovado")) novoP = "aprovada";
+    else novoP = "pedido_emitido";
+    if (novoP !== req.status) db.update(requisicoes).set({ status: novoP }).where(eq(requisicoes.id, id)).run();
+    return;
+  }
 
   const totalItens = db
     .select({ n: sql<number>`count(*)` })
@@ -241,9 +258,17 @@ export function obterProposta(db: DB, propostaId: number) {
 function garantirEditavel(db: DB, requisicaoId: number) {
   const req = db.select().from(requisicoes).where(eq(requisicoes.id, requisicaoId)).get();
   if (!req) throw new Error("Requisição não encontrada");
-  if (!["aberta", "cotando", "aguardando_aprovacao"].includes(req.status))
-    throw new Error("Esta requisição já passou da fase de cotação");
+  if (!["aberta", "cotando", "aguardando_aprovacao"].includes(req.status) || temPedidosAtivos(db, requisicaoId))
+    throw new Error("Já existem pedidos para esta requisição. Cancele-os para alterar a cotação.");
   return req;
+}
+
+export function temPedidosAtivos(db: DB, requisicaoId: number) {
+  return !!db
+    .select({ id: pedidos.id })
+    .from(pedidos)
+    .where(and(eq(pedidos.requisicaoId, requisicaoId), sql`${pedidos.status} != 'cancelado'`))
+    .get();
 }
 
 /** Cria ou substitui a proposta de um fornecedor para a requisição. */

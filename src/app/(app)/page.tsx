@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { AlertTriangleIcon, ArrowRightIcon, ClipboardListIcon, FlameIcon, PlusIcon, StampIcon, TruckIcon } from "lucide-react";
+import { AlertTriangleIcon, ArrowRightIcon, FileBarChartIcon, ClipboardListIcon, FlameIcon, PlusIcon, StampIcon, TruckIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { entregasPendentes, gastoPorObraNoPeriodo, resumoOperacional } from "@/server/dados/painel";
 import { listarRequisicoes } from "@/server/dados/requisicoes";
@@ -31,11 +31,18 @@ export default async function PainelPage() {
         titulo="Painel"
         descricao={new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${hoje}T12:00:00`))}
         acoes={
+          <>
+          <Button variant="outline" asChild>
+            <a href={`/imprimir/relatorio?mes=${hoje.slice(0, 7)}`} target="_blank" rel="noreferrer">
+              <FileBarChartIcon /> Relatório do mês
+            </a>
+          </Button>
           <Button asChild>
             <Link href="/requisicoes/nova">
               <PlusIcon /> Nova requisição
             </Link>
           </Button>
+          </>
         }
       />
 
@@ -46,9 +53,10 @@ export default async function PainelPage() {
         <Link href="/requisicoes?urgente=1" className="rounded-xl transition-shadow hover:shadow-md">
           <KpiCard rotulo="Urgentes / até amanhã" icone={<FlameIcon />} tom={r.urgentesHoje ? "urgente" : "neutro"} valor={r.urgentesHoje} detalhe="Requisições em andamento" />
         </Link>
-        <Link href="/requisicoes?status=aguardando_aprovacao" className="rounded-xl transition-shadow hover:shadow-md">
-          <KpiCard rotulo="Aguardando aprovação" icone={<StampIcon />} tom={r.aguardandoAprovacao ? "atencao" : "neutro"} valor={r.aguardandoAprovacao} detalhe="Vencedores escolhidos" />
+        <Link href="/pedidos?status=aguardando_aprovacao" className="rounded-xl transition-shadow hover:shadow-md">
+          <KpiCard rotulo="Aguardando aprovação" icone={<StampIcon />} tom={r.aguardandoAprovacao ? "atencao" : "neutro"} valor={r.aguardandoAprovacao} detalhe="Pedidos para aprovar" />
         </Link>
+        <Link href="/pedidos?status=atrasados" className="rounded-xl transition-shadow hover:shadow-md">
         <KpiCard
           rotulo="Entregas atrasadas"
           icone={<TruckIcon />}
@@ -56,6 +64,7 @@ export default async function PainelPage() {
           valor={r.entregasAtrasadas}
           detalhe={`${r.entregasHoje} previstas para hoje`}
         />
+        </Link>
       </div>
 
       <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-5">
@@ -116,7 +125,7 @@ export default async function PainelPage() {
               {entregas.slice(0, 6).map((e) => {
                 const atraso = diasEntre(e.prazo_prometido, hoje);
                 return (
-                  <Link key={e.id} href={`/requisicoes/${e.requisicao_id}`} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted">
+                  <Link key={e.id} href={`/pedidos/${e.id}`} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted">
                     {atraso > 0 ? <AlertTriangleIcon className="size-4 shrink-0 text-st-urgente" /> : <TruckIcon className="size-4 shrink-0 text-muted-foreground" />}
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px] font-medium">{e.fornecedor}</div>

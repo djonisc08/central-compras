@@ -4,12 +4,15 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ChevronLeftIcon, FileSpreadsheetIcon, PlusIcon, PrinterIcon } from "lucide-react";
 import { getDb } from "@/db/client";
-import { obterMapa, ultimosPrecosPagos } from "@/server/dados/requisicoes";
+import { listarPedidos, previaPedidos } from "@/server/dados/pedidos";
+import { obterMapa, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
 import { PageHeader } from "@/components/page-header";
-import { StatusRequisicaoBadge, UrgenteBadge } from "@/components/status";
+import { StatusPedidoBadge, StatusRequisicaoBadge, UrgenteBadge } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Vazio } from "@/components/vazio";
 import { formatarData, hojeISO } from "@/lib/datas";
+import { formatarReais } from "@/lib/dinheiro";
+import { GerarPedidos } from "./gerar-pedidos";
 import { MapaComparativo } from "./mapa-comparativo";
 
 export async function generateMetadata({ params }: PageProps<"/requisicoes/[id]/mapa">): Promise<Metadata> {
@@ -25,7 +28,11 @@ export default async function MapaPage({ params }: PageProps<"/requisicoes/[id]/
   if (!mapa) notFound();
   const r = mapa.requisicao;
   const ultimos = ultimosPrecosPagos(db, r.itens.map((i) => i.materialId));
-  const editavel = ["aberta", "cotando", "aguardando_aprovacao"].includes(r.status);
+  const comPedidos = temPedidosAtivos(db, r.id);
+  const editavel = ["aberta", "cotando", "aguardando_aprovacao"].includes(r.status) && !comPedidos;
+  const prontoParaPedido = editavel && mapa.resumo.totalItens > 0 && mapa.resumo.itensComVencedor === mapa.resumo.totalItens;
+  const previa = prontoParaPedido ? previaPedidos(db, r.id) : [];
+  const pedidosDaReq = listarPedidos(db, { requisicaoId: r.id }).filter((p) => p.status !== "cancelado");
 
   return (
     <>
@@ -62,9 +69,34 @@ export default async function MapaPage({ params }: PageProps<"/requisicoes/[id]/
                 <FileSpreadsheetIcon /> Excel
               </a>
             </Button>
+            {prontoParaPedido && <GerarPedidos requisicaoId={r.id} previa={previa} />}
           </>
         }
       />
+      {pedidosDaReq.length > 0 && (
+        <div className="mb-4 rounded-xl border bg-card p-4">
+          <div className="mb-2 text-[13px] font-medium">Pedidos desta requisição</div>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {pedidosDaReq.map((p) => (
+              <Link key={p.id} href={`/pedidos/${p.id}`} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 hover:bg-muted">
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-medium">{p.fornecedor}</div>
+                  <div className="text-xs text-muted-foreground">{p.numero ?? "sem número (não emitido)"}</div>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <StatusPedidoBadge status={p.status} />
+                  <span className="tabular text-xs font-medium">{formatarReais(p.valorTotalCentavos)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      {prontoParaPedido && (
+        <div className="mb-4 rounded-xl border border-st-ok/30 bg-st-ok-bg/50 px-4 py-3 text-[13px]">
+          Todos os itens têm vencedor. Próximo passo: <strong>Gerar pedido</strong> (botão verde acima), escolhendo à vista ou a prazo.
+        </div>
+      )}
       {mapa.propostas.length === 0 ? (
         <Vazio
           titulo="Ainda não há propostas para comparar"
