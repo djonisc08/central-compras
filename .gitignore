@@ -53,3 +53,4 @@ next-env.d.ts
 !/entrada/rascunhos/.gitkeep
 /entrada/processados/*
 !/entrada/processados/.gitkeep
+/data/*.log
