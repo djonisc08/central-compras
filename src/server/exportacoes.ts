@@ -265,10 +265,10 @@ export function planilhaMapa(db: DB, requisicaoId: number): ExcelJS.Workbook | n
  * Células amarelas = preencher. A aba oculta "_central" guarda os IDs para a
  * skill importar-orcamento ler a resposta sem digitação.
  */
-export async function planilhaCotacaoFornecedor(db: DB, requisicaoId: number, fornecedorId?: number | null) {
+export async function planilhaCotacaoFornecedor(db: DB, requisicaoId: number, fornecedorId?: number | null, itemIds?: number[]) {
   const r = obterRequisicao(db, requisicaoId);
   if (!r) return null;
-  const itens = itensParaFornecedor(db, requisicaoId, fornecedorId ?? null);
+  const itens = itensParaFornecedor(db, requisicaoId, fornecedorId ?? null, itemIds);
   const empresa = obterEmpresa(db);
   const fornecedor = fornecedorId ? listarFornecedores(db).find((f) => f.id === fornecedorId) : undefined;
   const wb = novoWorkbook();

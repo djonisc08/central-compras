@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { itensParaFornecedor } from "@/server/dados/cotacao";
+import { itensParaFornecedor, lerIds } from "@/server/dados/cotacao";
 import { fornecedores } from "@/db/schema";
 import { obterEmpresa } from "@/server/dados/empresa";
 import { obterRequisicao } from "@/server/dados/requisicoes";
@@ -28,7 +28,7 @@ export default async function ImprimirCotacaoPage({ params, searchParams }: Page
   const empresa = obterEmpresa(db);
   const fornecedorId = Number(sp.fornecedor) || null;
   const fornecedor = fornecedorId ? db.select().from(fornecedores).where(eq(fornecedores.id, fornecedorId)).get() : null;
-  const itens = itensParaFornecedor(db, r.id, fornecedorId);
+  const itens = itensParaFornecedor(db, r.id, fornecedorId, lerIds(sp.itens));
   const hoje = hojeISO();
   const prazoResposta = r.urgente ? hoje : somarDias(hoje, 2);
 

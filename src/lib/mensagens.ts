@@ -1,7 +1,7 @@
 // Textos prontos para WhatsApp. Usado pela tela e pela skill mensagem-cotacao.
 import { formatarData } from "./datas";
-import { formatarNumero } from "./dinheiro";
-import { formatarCnpj } from "./normalizar";
+import { formatarNumero, formatarReais } from "./dinheiro";
+import { formatarCnpj, formatarWhatsapp } from "./normalizar";
 
 export type DadosMensagemCotacao = {
   requisicaoId: number;
@@ -84,5 +84,37 @@ export function mensagemPedido(d: {
     "",
     `Por favor, informe o nº ${d.numero} na nota fiscal e confirme o recebimento deste pedido. O PDF segue em anexo.`,
     d.comprador ? `Obrigado! ${d.comprador}` : "Obrigado!",
+  ].join("\n");
+}
+
+export type PedidoParaRecebimento = {
+  numero: string | null;
+  fornecedor: string;
+  fornecedorContato: string | null;
+  fornecedorWhatsapp: string | null;
+  obra: string;
+  prazoPrometido: string | null;
+  valorTotalCentavos: number;
+  itens: { quantidade: number; unidade: string; material: string }[];
+};
+
+/** Resumo dos pedidos fechados para quem vai receber o material na obra. */
+export function mensagemRecebimento(pedidos: PedidoParaRecebimento[], opcoes: { titulo: string; comValores: boolean }) {
+  const blocos = pedidos.map((p) =>
+    [
+      `*${p.numero ?? "Pedido"} · ${p.fornecedor}*`,
+      `Obra: ${p.obra}${p.prazoPrometido ? ` · entrega prevista *${formatarData(p.prazoPrometido)}*` : ""}`,
+      ...(p.fornecedorContato || p.fornecedorWhatsapp
+        ? [`Contato: ${[p.fornecedorContato, formatarWhatsapp(p.fornecedorWhatsapp)].filter(Boolean).join(" · ")}`]
+        : []),
+      ...p.itens.map((i) => `• ${formatarNumero(i.quantidade)} ${i.unidade} – ${i.material}`),
+      ...(opcoes.comValores ? [`Valor: ${formatarReais(p.valorTotalCentavos)}`] : []),
+    ].join("\n"),
+  );
+  return [
+    `*${opcoes.titulo}*`,
+    `${pedidos.length} ${pedidos.length === 1 ? "pedido" : "pedidos"} para receber. Na entrega, confira quantidade, material e se a nota fiscal traz o nº do pedido.`,
+    "",
+    blocos.join("\n\n"),
   ].join("\n");
 }

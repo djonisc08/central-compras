@@ -22,6 +22,8 @@ import { Vazio } from "@/components/vazio";
 import { formatarData, hojeISO, inicioDoMes, somarDias } from "@/lib/datas";
 import { formatarReais } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
+import { obterPedido } from "@/server/dados/pedidos";
+import { EncaminharPedidos } from "./encaminhar-pedidos";
 import { SeletorDia } from "./seletor-dia";
 
 export const metadata: Metadata = { title: "Meu dia" };
@@ -56,7 +58,29 @@ export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
   const r = resumirAtividades(todas);
   const aba = ABAS.find((a) => a.chave === sp.aba) ?? ABAS[0];
   const daAba = (a: (typeof ABAS)[number]) => (a.tipos ? todas.filter((x) => (a.tipos as readonly string[]).includes(x.tipo)) : todas);
-  const lista = daAba(aba);
+  const naAba = daAba(aba);
+  // Na aba de pedidos, os pedidos emitidos ganham seleção para encaminhar a quem recebe na obra.
+  const pedidosDoDia =
+    aba.chave === "pedidos"
+      ? naAba
+          .filter((a) => a.tipo === "pedido")
+          .map((a) => ({ hora: a.hora, p: obterPedido(getDb(), Number(a.link.split("/").pop())) }))
+          .filter((x) => x.p != null)
+          .map(({ hora, p }) => ({
+            id: p!.id,
+            hora,
+            numero: p!.numero,
+            fornecedor: p!.fornecedor,
+            fornecedorContato: p!.fornecedorContato,
+            fornecedorWhatsapp: p!.fornecedorWhatsapp,
+            obra: p!.obra,
+            prazoPrometido: p!.prazoPrometido,
+            valorTotalCentavos: p!.valorTotalCentavos,
+            condicaoPagamento: p!.condicaoPagamento,
+            itens: p!.itens.map((i) => ({ quantidade: i.quantidade, unidade: i.unidade, material: i.material })),
+          }))
+      : [];
+  const lista = pedidosDoDia.length ? naAba.filter((a) => a.tipo !== "pedido") : naAba;
   const umDia = de === ate;
 
   const segunda = somarDias(hoje, -((new Date(`${hoje}T12:00:00`).getDay() + 6) % 7));
@@ -136,7 +160,13 @@ export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
         })}
       </nav>
 
-      <Card>
+      {pedidosDoDia.length > 0 && (
+        <div className="mb-4">
+          <EncaminharPedidos pedidos={pedidosDoDia} titulo={`Pedidos fechados · ${periodo}`} />
+        </div>
+      )}
+
+      <Card className={cn(pedidosDoDia.length > 0 && lista.length === 0 && "hidden")}>
         <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-1 px-2 py-2">
           {lista.length === 0 && (
             <Vazio

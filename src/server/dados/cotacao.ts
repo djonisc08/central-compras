@@ -1,12 +1,9 @@
-// Central de cotação: divide a requisição em lotes por categoria, diz quais itens vão para
-// cada fornecedor e acompanha quem já recebeu, foi cobrado e respondeu.
+// Pedir cotação: quais itens vão para cada fornecedor e quem já recebeu, foi cobrado e respondeu.
 import { and, eq, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { categorias, cotacaoEnvios, materiais, propostas } from "@/db/schema";
 import { listarFornecedores } from "./cadastros";
 import { obterRequisicao } from "./requisicoes";
-
-type ItemReq = NonNullable<ReturnType<typeof obterRequisicao>>["itens"][number];
 
 /** Itens que o fornecedor atende (pelas categorias dele). Se ele não atende nenhuma, vai a lista toda. */
 export function itensDoFornecedor<T extends { categoriaId: number }>(itens: T[], categoriaIds: number[]) {
@@ -14,19 +11,25 @@ export function itensDoFornecedor<T extends { categoriaId: number }>(itens: T[],
   return dele.length ? dele : itens;
 }
 
-export function itensParaFornecedor(db: DB, requisicaoId: number, fornecedorId: number | null) {
+/** Itens para o PDF/planilha: os escolhidos na tela (?itens=) ou, sem escolha, os que o fornecedor vende. */
+export function itensParaFornecedor(db: DB, requisicaoId: number, fornecedorId: number | null, itemIds?: number[]) {
   const r = obterRequisicao(db, requisicaoId);
   if (!r) return [];
+  if (itemIds?.length) {
+    const escolhidos = r.itens.filter((i) => itemIds.includes(i.id));
+    if (escolhidos.length) return escolhidos;
+  }
   if (!fornecedorId) return r.itens;
   const f = listarFornecedores(db).find((x) => x.id === fornecedorId);
   return f ? itensDoFornecedor(r.itens, f.categoriaIds) : r.itens;
 }
 
-export function quadroCotacao(db: DB, requisicaoId: number) {
-  const r = obterRequisicao(db, requisicaoId);
-  if (!r) return null;
-  const nomesCat = new Map(db.select().from(categorias).all().map((c) => [c.id, c.nome]));
-  const fornecedores = listarFornecedores(db, { somenteAtivos: true });
+/** "1,2,3" → [1, 2, 3] (parâmetro ?itens= das rotas de PDF e planilha). */
+export const lerIds = (v: unknown) =>
+  typeof v === "string" ? v.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+
+/** Todos os fornecedores ativos com a situação nesta cotação (enviado, cobrado, respondeu). */
+export function acompanhamentoCotacao(db: DB, requisicaoId: number) {
   const envios = new Map(
     db.select().from(cotacaoEnvios).where(eq(cotacaoEnvios.requisicaoId, requisicaoId)).all().map((e) => [e.fornecedorId, e]),
   );
@@ -49,42 +52,30 @@ export function quadroCotacao(db: DB, requisicaoId: number) {
       .all()
       .map((h) => [h.fornecedorId, h.n]),
   );
-
-  const porCategoria = Map.groupBy(r.itens, (i) => i.categoriaId);
-  const lotes = [...porCategoria].map(([categoriaId, itens]) => {
-    const atendem = fornecedores
-      .filter((f) => f.categoriaIds.includes(categoriaId))
-      .sort((a, b) => (historico.get(b.id) ?? 0) - (historico.get(a.id) ?? 0) || a.nome.localeCompare(b.nome));
-    return {
-      categoriaId,
-      categoria: nomesCat.get(categoriaId) ?? "Sem categoria",
-      itens,
-      fornecedores: atendem.map((f) => {
-        const seus = itensDoFornecedor(r.itens, f.categoriaIds);
-        const envio = envios.get(f.id);
-        const resposta = respostas.get(f.id);
-        return {
-          id: f.id,
-          nome: f.nome,
-          contato: f.contato,
-          whatsapp: f.whatsapp,
-          itens: seus as ItemReq[],
-          /** Outros lotes que vão junto na mesma mensagem. */
-          outrosLotes: [...new Set(seus.filter((i) => i.categoriaId !== categoriaId).map((i) => nomesCat.get(i.categoriaId) ?? ""))],
-          enviadoEm: envio?.enviadoEm ?? null,
-          cobradoEm: envio?.cobradoEm ?? null,
-          respondeuEm: resposta?.criado_em ?? null,
-          itensCotados: resposta?.cotados ?? 0,
-          totalCotado: resposta?.total ?? null,
-        };
-      }),
-    };
-  });
-  lotes.sort((a, b) => b.itens.length - a.itens.length || a.categoria.localeCompare(b.categoria));
-  return { requisicao: r, lotes };
+  return listarFornecedores(db, { somenteAtivos: true })
+    .map((f) => {
+      const envio = envios.get(f.id);
+      const resposta = respostas.get(f.id);
+      return {
+        id: f.id,
+        nome: f.nome,
+        contato: f.contato,
+        whatsapp: f.whatsapp,
+        categoriaIds: f.categoriaIds,
+        categorias: f.categorias,
+        historico: historico.get(f.id) ?? 0,
+        enviadoEm: envio?.enviadoEm ?? null,
+        qtdEnviada: envio?.qtdItens ?? 0,
+        cobradoEm: envio?.cobradoEm ?? null,
+        respondeuEm: resposta?.criado_em ?? null,
+        itensCotados: resposta?.cotados ?? 0,
+        totalCotado: resposta?.total ?? null,
+      };
+    })
+    .sort((a, b) => b.historico - a.historico || a.nome.localeCompare(b.nome));
 }
 
-export type LoteCotacao = NonNullable<ReturnType<typeof quadroCotacao>>["lotes"][number];
+export type FornecedorAcompanhamento = ReturnType<typeof acompanhamentoCotacao>[number];
 
 export function registrarEnvio(db: DB, requisicaoId: number, fornecedorId: number, qtdItens: number) {
   db.insert(cotacaoEnvios)

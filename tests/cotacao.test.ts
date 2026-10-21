@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { abrirDb } from "@/db/client";
 import { criarCategoria, salvarFornecedor, salvarMaterial, salvarObra } from "@/server/dados/cadastros";
-import { itensParaFornecedor, quadroCotacao, registrarEnvio } from "@/server/dados/cotacao";
+import { acompanhamentoCotacao, itensParaFornecedor, registrarEnvio } from "@/server/dados/cotacao";
 import { criarRequisicao } from "@/server/dados/requisicoes";
 
 describe("cotação por lote", () => {
@@ -29,13 +29,18 @@ describe("cotação por lote", () => {
     expect(itensParaFornecedor(db, reqId, cassol).map((i) => i.material)).toEqual(["Cimento CPII 50kg"]);
   });
 
-  it("separa em lotes e registra o envio", () => {
+  it("só os itens escolhidos na tela, quando houver", () => {
+    const [, cim] = itensParaFornecedor(db, reqId, null);
+    expect(itensParaFornecedor(db, reqId, frigelar, [cim.id]).map((i) => i.material)).toEqual(["Cimento CPII 50kg"]);
+  });
+
+  it("acompanha o envio por fornecedor", () => {
     registrarEnvio(db, reqId, frigelar, 1);
-    const q = quadroCotacao(db, reqId)!;
-    expect(q.lotes.map((l) => l.categoria).sort()).toEqual(["Básicos Teste", "Refrigeração Teste"]);
-    const fr = q.lotes.find((l) => l.categoria === "Refrigeração Teste")!.fornecedores[0];
-    expect(fr.nome).toBe("Frigelar");
+    const lista = acompanhamentoCotacao(db, reqId);
+    const fr = lista.find((f) => f.nome === "Frigelar")!;
     expect(fr.enviadoEm).toBeTruthy();
+    expect(fr.qtdEnviada).toBe(1);
     expect(fr.respondeuEm).toBeNull();
+    expect(lista.find((f) => f.nome === "Cassol")!.enviadoEm).toBeNull();
   });
 });

@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { CalendarIcon, ChevronLeftIcon, FileTextIcon, GridIcon, HardHatIcon, MapPinIcon, PencilIcon, PlusIcon, UserIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { listarCategorias } from "@/server/dados/cadastros";
-import { quadroCotacao } from "@/server/dados/cotacao";
+import { acompanhamentoCotacao } from "@/server/dados/cotacao";
 import { obterEmpresa } from "@/server/dados/empresa";
 import { obterMapa, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
 import { PageHeader } from "@/components/page-header";
@@ -17,10 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Vazio } from "@/components/vazio";
 import { diasEntre, formatarData, hojeISO, prazoRelativo } from "@/lib/datas";
 import { formatarNumero, formatarReais } from "@/lib/dinheiro";
-import { mensagemCobranca, mensagemCotacao } from "@/lib/mensagens";
 import { cn } from "@/lib/utils";
 import { AcoesRequisicao } from "./acoes-requisicao";
-import { CentralCotacao } from "./central-cotacao";
+import { PedirCotacao } from "./pedir-cotacao";
 import { PropostaAcoes } from "./proposta-acoes";
 
 export async function generateMetadata({ params }: PageProps<"/requisicoes/[id]">): Promise<Metadata> {
@@ -41,7 +40,16 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
   const editavel = ["aberta", "cotando", "aguardando_aprovacao"].includes(r.status);
   const itensEditaveis = editavel && !temPedidosAtivos(db, r.id);
 
-  const quadro = quadroCotacao(db, r.id)!;
+  const nomesCategorias = new Map(listarCategorias(db).map((c) => [c.id, c.nome]));
+  const itensCotacao = r.itens.map((i) => ({
+    id: i.id,
+    material: i.material,
+    quantidade: i.quantidade,
+    unidade: i.unidade,
+    especificacao: i.especificacao,
+    categoriaId: i.categoriaId,
+    categoria: nomesCategorias.get(i.categoriaId) ?? "Sem categoria",
+  }));
   const dadosMensagem = {
     requisicaoId: r.id,
     obra: r.obra,
@@ -52,17 +60,6 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
     comprador: empresa.comprador,
     faturamento: { razaoSocial: r.razaoSocialObra, cnpj: r.cnpjObra, cno: r.cnoObra, cep: r.cepObra },
   };
-  const lotes = quadro.lotes.map((l) => ({
-    categoriaId: l.categoriaId,
-    categoria: l.categoria,
-    itens: l.itens.map((i) => ({ id: i.id, materialId: i.materialId, material: i.material, quantidade: i.quantidade, unidade: i.unidade })),
-    fornecedores: l.fornecedores.map(({ itens, ...f }) => ({
-      ...f,
-      qtdItens: itens.length,
-      mensagem: mensagemCotacao({ ...dadosMensagem, itens, contato: f.contato }),
-      cobranca: mensagemCobranca({ requisicaoId: r.id, obra: r.obra, contato: f.contato, urgente: r.urgente, qtdItens: itens.length }),
-    })),
-  }));
 
   const dNec = diasEntre(hoje, r.dataNecessidade);
 
@@ -188,7 +185,9 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
             </Table>
           </Card>
 
-          {editavel && <CentralCotacao requisicaoId={r.id} urgente={r.urgente} lotes={lotes} categorias={listarCategorias(db)} />}
+          {editavel && (
+            <PedirCotacao requisicaoId={r.id} itens={itensCotacao} fornecedores={acompanhamentoCotacao(db, r.id)} dados={dadosMensagem} />
+          )}
 
           <Card>
             <CardHeader>
