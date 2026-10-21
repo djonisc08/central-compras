@@ -61,6 +61,8 @@ export function previaPedidos(db: DB, requisicaoId: number) {
           precoUnitarioCentavos: l.precoEscolhido!,
           totalCentavos: l.totalEscolhido!,
         })),
+      /** Parte do desconto negociado que cabe aos itens deste pedido. */
+      descontoNegociado: c.valorVencidoBruto - c.valorVencido,
       totalPrazo: c.valorVencido + c.proposta.freteCentavos,
       totalAVista:
         (c.proposta.descontoAVistaBp ?? 0) > 0 ? aplicarDesconto(c.valorVencido, c.proposta.descontoAVistaBp ?? 0) + c.proposta.freteCentavos : null,
@@ -86,7 +88,7 @@ export function gerarPedidos(db: DB, entrada: GerarPedidosInput) {
       const desconto = forma === "avista" ? p.descontoAVistaBp : 0;
       const linhas = p.itens.map((i) => ({ ...i, preco: i.precoUnitarioCentavos }));
       const valorItens = aplicarDesconto(
-        linhas.reduce((s, l) => s + l.totalCentavos, 0),
+        linhas.reduce((s, l) => s + l.totalCentavos, 0) - p.descontoNegociado,
         desconto,
       );
       const condicao = forma === "avista" ? (desconto ? `À vista (−${(desconto / 100).toLocaleString("pt-BR")}%)` : "À vista") : p.condicaoPagamento;
@@ -101,6 +103,7 @@ export function gerarPedidos(db: DB, entrada: GerarPedidosInput) {
           condicaoPagamento: condicao,
           formaPagamento: forma,
           descontoBp: desconto,
+          descontoNegociadoCentavos: p.descontoNegociado,
           prazoEntregaDias: p.prazoEntregaDias,
           status: "aguardando_aprovacao",
           observacoes: dados.observacoes,
@@ -241,6 +244,7 @@ export function obterPedido(db: DB, id: number) {
       condicaoPagamento: pedidos.condicaoPagamento,
       formaPagamento: pedidos.formaPagamento,
       descontoBp: pedidos.descontoBp,
+      descontoNegociadoCentavos: pedidos.descontoNegociadoCentavos,
       prazoEntregaDias: pedidos.prazoEntregaDias,
       aprovadoPor: pedidos.aprovadoPor,
       dataAprovacao: pedidos.dataAprovacao,

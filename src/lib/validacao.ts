@@ -105,6 +105,8 @@ export const propostaSchema = z.object({
   dataCotacao: dataISO,
   /** Total impresso no orçamento; se informado, a soma das linhas + frete tem que bater centavo a centavo. */
   totalDocumentoCentavos: z.number().int().min(0).nullable().optional(),
+  /** Desconto negociado depois do orçamento (centavos), aplicado sobre o total dos itens. */
+  descontoNegociadoCentavos: centavos.default(0),
   arquivoOrigem: textoOpcional,
   observacoes: textoOpcional,
   itens: z.array(propostaItemSchema).min(1, "Informe o preço de pelo menos um item"),

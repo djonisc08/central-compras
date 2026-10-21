@@ -36,6 +36,13 @@
       "when": 1792586262113,
       "tag": "0004_total_exato_orcamento",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792590949128,
+      "tag": "0005_desconto_negociado",
+      "breakpoints": true
     }
   ]
 }

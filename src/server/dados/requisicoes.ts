@@ -225,6 +225,7 @@ export function listarPropostas(db: DB, requisicaoId: number): MapaPropostaEntra
       validade: propostas.validade,
       dataCotacao: propostas.dataCotacao,
       totalDocumentoCentavos: propostas.totalDocumentoCentavos,
+      descontoNegociadoCentavos: propostas.descontoNegociadoCentavos,
     })
     .from(propostas)
     .innerJoin(fornecedores, eq(fornecedores.id, propostas.fornecedorId))

@@ -32,6 +32,8 @@ export type MapaPropostaEntrada = {
   fornecedorId: number;
   fornecedor: string;
   freteCentavos: number;
+  /** Desconto negociado depois do orçamento, sobre o total dos itens (centavos). */
+  descontoNegociadoCentavos?: number;
   condicaoPagamento: string | null;
   /** Desconto à vista em centésimos de % (430 = 4,30%). */
   descontoAVistaBp?: number;
@@ -83,13 +85,18 @@ export type LinhaMapa = {
 export type ColunaMapa = {
   proposta: MapaPropostaEntrada;
   subtotal: number;
-  total: number; // subtotal + frete
+  /** Desconto negociado sobre os itens (centavos). */
+  descontoNegociado: number;
+  total: number; // subtotal − desconto negociado + frete
   /** Total com o desconto à vista aplicado aos itens (frete sem desconto); null se não há desconto. */
   totalAVista: number | null;
   itensCotados: number;
   completa: boolean;
   itensVencidos: number;
+  /** Itens vencidos já com a parte proporcional do desconto negociado. */
   valorVencido: number;
+  /** Itens vencidos sem o desconto negociado (soma das linhas). */
+  valorVencidoBruto: number;
 };
 
 export type ResumoMapa = {
@@ -183,15 +190,21 @@ export function calcularMapa(
       }
     }
     const desconto = p.descontoAVistaBp ?? 0;
+    const negociado = Math.min(p.descontoNegociadoCentavos ?? 0, subtotal);
+    // Ganhou só parte dos itens: leva a parte proporcional do desconto negociado.
+    const negociadoVencido = subtotal > 0 ? Math.round((negociado * valorVencido) / subtotal) : 0;
+    const liquido = subtotal - negociado;
     return {
       proposta: p,
       subtotal,
-      total: subtotal + p.freteCentavos,
-      totalAVista: desconto > 0 ? Math.round((subtotal * (10000 - desconto)) / 10000) + p.freteCentavos : null,
+      descontoNegociado: negociado,
+      total: liquido + p.freteCentavos,
+      totalAVista: desconto > 0 ? Math.round((liquido * (10000 - desconto)) / 10000) + p.freteCentavos : null,
       itensCotados,
       completa: itensCotados === itens.length && itens.length > 0,
       itensVencidos,
-      valorVencido,
+      valorVencido: valorVencido - negociadoVencido,
+      valorVencidoBruto: valorVencido,
     };
   });
 

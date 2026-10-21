@@ -68,3 +68,30 @@ describe("orçamento da Frigelar centavo a centavo", () => {
   });
 
 });
+
+describe("desconto negociado depois do orçamento", () => {
+  it("total final negociado vale no mapa e no pedido", () => {
+    const db = abrirDb(":memory:");
+    const cat = criarCategoria(db, "Elétrica X");
+    const obra = salvarObra(db, { nome: "MAX 94" });
+    const fio = salvarMaterial(db, { nomePadronizado: "Fio 1,5mm azul", unidade: "rl", categoriaId: cat });
+    const f = salvarFornecedor(db, { nome: "Capital", categoriaIds: [cat] });
+    const reqId = criarRequisicao(db, { obraId: obra, solicitante: "Cris", dataPedido: "2026-10-22", dataNecessidade: "2026-10-24", itens: [{ materialId: fio, quantidade: 8 }] });
+    const item = obterRequisicao(db, reqId)!.itens[0].id;
+    // Orçamento 8 × R$ 140,00 + frete 25,00 = 1.145,00; fechado por 1.100,00.
+    const pid = salvarProposta(db, {
+      requisicaoId: reqId,
+      fornecedorId: f,
+      dataCotacao: "2026-10-22",
+      freteCentavos: 2500,
+      totalDocumentoCentavos: 114500,
+      descontoNegociadoCentavos: 4500,
+      itens: [{ requisicaoItemId: item, precoUnitarioCentavos: 14000 }],
+    });
+    expect(obterMapa(db, reqId)!.resumo.colunas[0].total).toBe(110000);
+    marcarFornecedorVencedor(db, reqId, pid);
+    const pedido = obterPedido(db, gerarPedidos(db, { requisicaoId: reqId })[0])!;
+    expect(pedido.valorTotalCentavos).toBe(110000);
+    expect(pedido.descontoNegociadoCentavos).toBe(4500);
+  });
+});

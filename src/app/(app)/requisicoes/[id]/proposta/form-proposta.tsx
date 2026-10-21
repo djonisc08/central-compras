@@ -37,6 +37,7 @@ type PropostaExistente = {
   dataCotacao: string;
   observacoes: string | null;
   totalDocumentoCentavos?: number | null;
+  descontoNegociadoCentavos?: number;
   itens: {
     requisicaoItemId: number;
     precoUnitarioCentavos: number;
@@ -81,6 +82,7 @@ export function FormProposta({
   const [totalDocumento, setTotalDocumento] = useState(
     proposta?.totalDocumentoCentavos != null ? centavosParaTextoInput(proposta.totalDocumentoCentavos) : "",
   );
+  const [descontoNeg, setDescontoNeg] = useState(proposta?.descontoNegociadoCentavos ?? 0);
   const [precos, setPrecos] = useState<Record<number, { preco: string; total: string; marca: string; disponivel: boolean }>>(() =>
     Object.fromEntries(
       requisicao.itens.map((i) => {
@@ -111,10 +113,21 @@ export function FormProposta({
     }
     const f = textoParaCentavos(frete) ?? 0;
     const bp = descontoParaBp(desconto);
-    const totalAVista = bp > 0 ? Math.round((subtotal * (10000 - bp)) / 10000) + f : null;
+    const negociado = Math.min(descontoNeg, subtotal);
+    const totalAVista = bp > 0 ? Math.round(((subtotal - negociado) * (10000 - bp)) / 10000) + f : null;
     const doc = textoParaCentavos(totalDocumento);
-    return { subtotal, frete: f, total: subtotal + f, totalAVista, cotados, doc, diferenca: doc != null ? doc - (subtotal + f) : null };
-  }, [precos, frete, desconto, totalDocumento, requisicao.itens]);
+    return {
+      subtotal,
+      frete: f,
+      total: subtotal + f,
+      negociado,
+      final: subtotal + f - negociado,
+      totalAVista,
+      cotados,
+      doc,
+      diferenca: doc != null ? doc - (subtotal + f) : null,
+    };
+  }, [precos, frete, desconto, totalDocumento, descontoNeg, requisicao.itens]);
 
   function enviar(form: FormData) {
     if (!fornecedorId) return void toast.error("Escolha o fornecedor");
@@ -145,6 +158,7 @@ export function FormProposta({
         fornecedorId,
         freteCentavos: textoParaCentavos(frete) ?? 0,
         totalDocumentoCentavos: textoParaCentavos(totalDocumento),
+        descontoNegociadoCentavos: totais.negociado,
         condicaoPagamento: condicao,
         descontoAVistaBp: descontoParaBp(desconto),
         prazoEntregaDias: prazo === "" ? null : Number(prazo),
@@ -203,7 +217,7 @@ export function FormProposta({
             <Campo rotulo="Data da cotação" htmlFor="dataCotacao">
               <Input id="dataCotacao" name="dataCotacao" type="date" defaultValue={proposta?.dataCotacao ?? hoje} required />
             </Campo>
-            <Campo rotulo="Total do orçamento (R$)" htmlFor="totalDocumento" dica="O total impresso no PDF. O sistema confere centavo a centavo.">
+            <Campo rotulo="Total do PDF (R$)" htmlFor="totalDocumento" dica="Para conferir: o total impresso no orçamento original.">
               <Input
                 id="totalDocumento"
                 inputMode="decimal"
@@ -345,7 +359,44 @@ export function FormProposta({
                 : `Não bate com o orçamento (${formatarReais(totais.doc!)}): diferença de ${formatarReais(totais.diferenca)}. Confira frete e o total de cada linha.`}
             </div>
           )}
-          <Linha rotulo="Total" valor={formatarReais(totais.total)} forte />
+          <Linha rotulo={totais.negociado ? "Total do orçamento" : "Total"} valor={formatarReais(totais.total)} forte={!totais.negociado} />
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed bg-card px-3 py-2">
+            <div>
+              <div className="text-[13px] font-medium">Total final negociado</div>
+              <div className="text-xs text-muted-foreground">Conseguiu desconto depois do orçamento? Digite o valor fechado.</div>
+            </div>
+            <div className="relative w-40">
+              <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input
+                key={`${totais.total}-${descontoNeg}`}
+                aria-label="Total final negociado"
+                inputMode="decimal"
+                defaultValue={descontoNeg ? centavosParaTextoInput(totais.final) : ""}
+                placeholder={centavosParaTextoInput(totais.total)}
+                onBlur={(e) => {
+                  const v = textoParaCentavos(e.target.value);
+                  if (v == null) return setDescontoNeg(0);
+                  if (v > totais.total) {
+                    toast.error("O total negociado não pode ser maior que o do orçamento");
+                    return setDescontoNeg(0);
+                  }
+                  if (v < totais.frete) return void toast.error("O total negociado ficou menor que o frete. Confira o valor.");
+                  setDescontoNeg(totais.total - v);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
+                className="tabular h-9 pl-9 text-right font-semibold"
+              />
+            </div>
+          </div>
+          {totais.negociado > 0 && (
+            <>
+              <Linha
+                rotulo={`Desconto negociado (${((totais.negociado / totais.subtotal) * 100).toFixed(2).replace(".", ",")}%)`}
+                valor={`−${formatarReais(totais.negociado)}`}
+              />
+              <Linha rotulo="Total final" valor={formatarReais(totais.final)} forte />
+            </>
+          )}
           {totais.totalAVista != null && <Linha rotulo="À vista (desconto sobre itens)" valor={formatarReais(totais.totalAVista)} />}
         </div>
       </Card>

@@ -304,6 +304,12 @@ export function MapaComparativo({
             </tbody>
             <tfoot className="text-[12.5px]">
               <RodapeLinha rotulo="Subtotal" colunas={resumo.colunas.map((c) => formatarReais(c.subtotal))} />
+              {resumo.colunas.some((c) => c.descontoNegociado > 0) && (
+                <RodapeLinha
+                  rotulo="Desconto negociado"
+                  colunas={resumo.colunas.map((c) => (c.descontoNegociado ? `−${formatarReais(c.descontoNegociado)}` : "—"))}
+                />
+              )}
               <RodapeLinha rotulo="Frete" colunas={resumo.colunas.map((c) => (c.proposta.freteCentavos ? formatarReais(c.proposta.freteCentavos) : "CIF"))} />
               <tr className="font-semibold">
                 <td className="sticky left-0 z-10 border-b bg-muted px-4 py-2.5">Total com frete</td>

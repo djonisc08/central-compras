@@ -148,12 +148,22 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
                   </TableCell>
                   <TableCell className="tabular text-right">{formatarReais(subtotal)}</TableCell>
                 </TableRow>
+                {p.descontoNegociadoCentavos > 0 && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={3} className="text-right text-st-ok">
+                      Desconto negociado
+                    </TableCell>
+                    <TableCell className="tabular text-right text-st-ok">−{formatarReais(p.descontoNegociadoCentavos)}</TableCell>
+                  </TableRow>
+                )}
                 {p.descontoBp > 0 && (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={3} className="text-right text-st-ok">
                       Desconto à vista ({formatarPercentual(p.descontoBp / 10000)})
                     </TableCell>
-                    <TableCell className="tabular text-right text-st-ok">−{formatarReais(subtotal - (p.valorTotalCentavos - p.freteCentavos))}</TableCell>
+                    <TableCell className="tabular text-right text-st-ok">
+                      −{formatarReais(subtotal - p.descontoNegociadoCentavos - (p.valorTotalCentavos - p.freteCentavos))}
+                    </TableCell>
                   </TableRow>
                 )}
                 <TableRow className="hover:bg-transparent">

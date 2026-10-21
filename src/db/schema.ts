@@ -192,6 +192,8 @@ export const propostas = sqliteTable(
     dataCotacao: text("data_cotacao").notNull(),
     /** Total impresso no orçamento (produtos + frete + impostos), para conferir centavo a centavo. */
     totalDocumentoCentavos: integer("total_documento_centavos"),
+    /** Desconto conseguido depois do orçamento, sobre o total (centavos). */
+    descontoNegociadoCentavos: integer("desconto_negociado_centavos").notNull().default(0),
     arquivoOrigem: text("arquivo_origem"),
     observacoes: text("observacoes"),
     criadoEm: criadoEm(),
@@ -247,6 +249,7 @@ export const pedidos = sqliteTable(
     /** "prazo" ou "avista". À vista aplica o desconto da proposta nos itens. */
     formaPagamento: text("forma_pagamento", { enum: ["prazo", "avista"] }).notNull().default("prazo"),
     descontoBp: integer("desconto_bp").notNull().default(0),
+    descontoNegociadoCentavos: integer("desconto_negociado_centavos").notNull().default(0),
     prazoEntregaDias: integer("prazo_entrega_dias"),
     motivoCancelamento: text("motivo_cancelamento"),
     observacoes: text("observacoes"),

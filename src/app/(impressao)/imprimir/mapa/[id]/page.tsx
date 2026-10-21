@@ -119,6 +119,12 @@ export default async function ImprimirMapaPage({ params }: PageProps<"/imprimir/
           {(
             [
               ["Subtotal", (c) => formatarReais(c.subtotal)],
+              ...(cols.some((c) => c.descontoNegociado > 0)
+                ? ([["Desconto negociado", (c) => (c.descontoNegociado ? `−${formatarReais(c.descontoNegociado)}` : "—")]] as [
+                    string,
+                    (c: (typeof cols)[number]) => string,
+                  ][])
+                : []),
               ["Frete", (c) => (c.proposta.freteCentavos ? formatarReais(c.proposta.freteCentavos) : "CIF")],
               ["Total com frete", (c) => formatarReais(c.total)],
               ...(cols.some((c) => c.totalAVista != null)

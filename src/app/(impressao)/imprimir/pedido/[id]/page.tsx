@@ -100,12 +100,20 @@ export default async function ImprimirPedidoPage({ params }: PageProps<"/imprimi
             </td>
             <td className={`${td} text-right`}>{formatarReais(subtotal)}</td>
           </tr>
+          {p.descontoNegociadoCentavos > 0 && (
+            <tr>
+              <td className={`${td} text-right`} colSpan={5}>
+                Desconto negociado
+              </td>
+              <td className={`${td} text-right`}>−{formatarReais(p.descontoNegociadoCentavos)}</td>
+            </tr>
+          )}
           {p.descontoBp > 0 && (
             <tr>
               <td className={`${td} text-right`} colSpan={5}>
                 Desconto para pagamento à vista ({formatarPercentual(p.descontoBp / 10000)})
               </td>
-              <td className={`${td} text-right`}>−{formatarReais(subtotal - (p.valorTotalCentavos - p.freteCentavos))}</td>
+              <td className={`${td} text-right`}>−{formatarReais(subtotal - p.descontoNegociadoCentavos - (p.valorTotalCentavos - p.freteCentavos))}</td>
             </tr>
           )}
           <tr>

@@ -46,6 +46,8 @@ export function imprimirPrevia(p: PropostaPreparada) {
   const total = p.subtotal + p.freteCentavos;
   console.log(`\nItens ${reais(p.subtotal)} + frete ${p.freteCentavos ? reais(p.freteCentavos) : "CIF"} = ${reais(total)}`);
   if (p.totalDocumentoCentavos != null) console.log(`✓ Confere centavo a centavo com o orçamento (${reais(p.totalDocumentoCentavos)})`);
+  const negociado = p.entrada.descontoNegociadoCentavos ?? 0;
+  if (negociado) console.log(`Desconto negociado −${reais(negociado)} → total final ${reais(total - negociado)}`);
   if (p.descontoAVistaBp) console.log(`À vista: ${reais(Math.round((p.subtotal * (10000 - p.descontoAVistaBp)) / 10000) + p.freteCentavos)}`);
   avisar(p.avisos);
 }

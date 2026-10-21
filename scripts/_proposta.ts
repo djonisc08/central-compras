@@ -29,6 +29,8 @@ export type RascunhoProposta = {
   /** Total impresso no orçamento (produtos + frete + impostos). Com ele, a gravação confere centavo a centavo. */
   totalDocumento?: number | string;
   totalDocumentoCentavos?: number;
+  /** Desconto conseguido depois do orçamento (reais), sobre o total dos itens. */
+  descontoNegociado?: number | string;
   itens: {
     requisicaoItemId: number;
     precoUnitario?: number | string;
@@ -166,6 +168,7 @@ export function prepararProposta(db: DB, r: RascunhoProposta) {
     arquivoOrigem: r.arquivoOrigem ?? null,
     observacoes: r.observacoes ?? null,
     totalDocumentoCentavos,
+    descontoNegociadoCentavos: paraCentavos(r.descontoNegociado) ?? 0,
     itens: linhas.map((l) => ({
       requisicaoItemId: l.it.id,
       precoUnitarioCentavos: l.preco,

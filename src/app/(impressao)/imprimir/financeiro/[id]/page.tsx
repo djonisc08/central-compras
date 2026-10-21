@@ -143,13 +143,13 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
         <tfoot>
           {(
             [
-              ["Subtotal (aprovado)", (c) => formatarReais(c.valorVencido)],
+              ["Subtotal (aprovado)", (c) => formatarReais(c.valorVencidoBruto)],
               ["Frete", (c) => (c.itensVencidos ? (c.proposta.freteCentavos ? formatarReais(c.proposta.freteCentavos) : "CIF") : "—")],
               [
                 "Desconto",
                 (c) => {
                   const p = pedidoDe(c.proposta.fornecedorId);
-                  const d = p ? c.valorVencido + c.proposta.freteCentavos - p.valorTotalCentavos : 0;
+                  const d = c.valorVencidoBruto + c.proposta.freteCentavos - (p?.valorTotalCentavos ?? c.valorVencido + c.proposta.freteCentavos);
                   return d > 0 ? `−${formatarReais(d)}` : "—";
                 },
               ],
