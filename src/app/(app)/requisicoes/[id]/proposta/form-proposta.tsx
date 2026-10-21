@@ -306,7 +306,7 @@ export function FormProposta({
                     inputMode="decimal"
                     value={p.preco}
                     disabled={!p.disponivel}
-                    onChange={(e) => set({ preco: e.target.value })}
+                    onChange={(e) => set({ preco: e.target.value, total: "" })}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();

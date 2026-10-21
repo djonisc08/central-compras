@@ -258,7 +258,7 @@ export function PedirCotacao({
           <div className="rounded-xl border-2 border-primary/40 bg-accent/20">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5">
               <div className="flex items-center gap-2 text-[13.5px] font-semibold">
-                <SendIcon className="size-4 text-primary" /> Encaminhar {escolhidos.length} {escolhidos.length === 1 ? "item" : "itens"} para:
+                <SendIcon className="size-4 text-marca-verde-escuro" /> Encaminhar {escolhidos.length} {escolhidos.length === 1 ? "item" : "itens"} para:
               </div>
               <div className="relative">
                 <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -272,7 +272,7 @@ export function PedirCotacao({
               {(verTodos || busca || vendem.length === 0) && outros.map((f) => <LinhaFornecedor key={f.id} f={f} vende={false} />)}
             </ul>
             {!verTodos && !busca && vendem.length > 0 && outros.length > 0 && (
-              <button type="button" onClick={() => setVerTodos(true)} className="w-full cursor-pointer border-t px-3 py-2 text-left text-xs text-primary hover:underline">
+              <button type="button" onClick={() => setVerTodos(true)} className="w-full cursor-pointer border-t px-3 py-2 text-left text-xs text-marca-verde-escuro hover:underline">
                 Ver outros {outros.length} fornecedores
               </button>
             )}

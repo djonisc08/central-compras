@@ -28,7 +28,7 @@ export default async function ImprimirRelatorioPage({ searchParams }: PageProps<
       titulo="Relatório de compras"
       subtitulo={
         <>
-          <div className="text-[15px] font-bold text-zinc-900 capitalize">{formatarMes(mes)}</div>
+          <div className="font-marca text-[17px] font-semibold text-white capitalize">{formatarMes(mes)}</div>
           <div>
             {formatarData(ind.periodo.inicio)} a {formatarData(ind.periodo.fim)}
           </div>
@@ -88,7 +88,7 @@ export default async function ImprimirRelatorioPage({ searchParams }: PageProps<
                   <span className="tabular font-semibold">{formatarReais(g.total)}</span>
                 </div>
                 <div className="h-2 rounded bg-zinc-100">
-                  <div className="h-2 rounded bg-[#0F4C5C]" style={{ width: `${(g.total / maxObra) * 100}%` }} />
+                  <div className="h-2 rounded bg-marca-verde" style={{ width: `${(g.total / maxObra) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -117,7 +117,7 @@ export default async function ImprimirRelatorioPage({ searchParams }: PageProps<
         <Sobretitulo>Fornecedores do mês</Sobretitulo>
         <table className="tabular w-full border-collapse text-[10.5px]">
           <thead>
-            <tr className="bg-[#1f2a37] text-white">
+            <tr className="bg-marca-preto text-white">
               {["Fornecedor", "Gasto", "Pedidos", "Pontualidade", "Nota"].map((h, i) => (
                 <th key={h} className={`px-2 py-1 font-semibold ${i ? "text-right" : "text-left"}`}>
                   {h}
@@ -158,7 +158,7 @@ export default async function ImprimirRelatorioPage({ searchParams }: PageProps<
   );
 }
 
-function Sobretitulo({ children, cor = "text-[#B4532A]" }: { children: React.ReactNode; cor?: string }) {
+function Sobretitulo({ children, cor = "text-marca-verde-escuro" }: { children: React.ReactNode; cor?: string }) {
   return <div className={`mb-1.5 text-[9.5px] font-bold tracking-[0.08em] uppercase ${cor}`}>{children}</div>;
 }
 

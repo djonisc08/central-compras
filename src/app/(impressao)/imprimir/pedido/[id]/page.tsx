@@ -24,7 +24,7 @@ export default async function ImprimirPedidoPage({ params }: PageProps<"/imprimi
   const empresa = obterEmpresa(db);
   const rascunho = !p.numero;
   const subtotal = p.itens.reduce((s, i) => s + i.totalCentavos, 0);
-  const th = "border border-zinc-300 bg-zinc-100 px-2 py-1.5 text-left font-semibold";
+  const th = "border border-marca-preto bg-marca-preto px-2 py-1.5 text-left font-semibold text-white";
   const td = "border border-zinc-300 px-2 py-1.5";
 
   return (
@@ -33,9 +33,9 @@ export default async function ImprimirPedidoPage({ params }: PageProps<"/imprimi
       titulo="Pedido de compra"
       subtitulo={
         <>
-          <div className="text-[15px] font-bold text-zinc-900">{p.numero ?? "RASCUNHO"}</div>
+          <div className="font-marca text-[17px] font-semibold text-white">{p.numero ?? "RASCUNHO"}</div>
           <div>Emissão: {formatarData(p.dataEmissao)}</div>
-          {p.status === "cancelado" && <div className="font-bold text-red-700">CANCELADO</div>}
+          {p.status === "cancelado" && <div className="font-bold text-[#ff8a7a]">CANCELADO</div>}
         </>
       }
     >
@@ -161,7 +161,7 @@ export default async function ImprimirPedidoPage({ params }: PageProps<"/imprimi
 
 function Caixa({ rotulo, destaque, children }: { rotulo: string; destaque?: boolean; children: React.ReactNode }) {
   return (
-    <div className={`rounded p-3 ${destaque ? "border-2 border-[#0F4C5C]/70" : "border border-zinc-300"}`}>
+    <div className={`rounded p-3 ${destaque ? "border-2 border-marca-verde" : "border border-zinc-300"}`}>
       <div className="mb-0.5 text-[9.5px] font-semibold tracking-wide text-zinc-500 uppercase">{rotulo}</div>
       {children}
     </div>
@@ -172,7 +172,7 @@ function Dado({ rotulo, valor, forte, span }: { rotulo: string; valor: string; f
   return (
     <div className={span ? "col-span-2" : ""}>
       <div className="text-[9.5px] font-semibold tracking-wide text-zinc-500 uppercase">{rotulo}</div>
-      <div className={forte ? "text-[13px] font-bold text-[#0F4C5C]" : "font-medium"}>{valor}</div>
+      <div className={forte ? "text-[13px] font-bold text-marca-verde-escuro" : "font-medium"}>{valor}</div>
     </div>
   );
 }

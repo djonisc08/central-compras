@@ -67,7 +67,7 @@ export function AnexarOrcamento({ requisicaoId, pendentes }: { requisicaoId: num
           arrastando ? "border-primary bg-accent/50" : "border-border hover:border-primary/50 hover:bg-muted/40",
         )}
       >
-        <UploadCloudIcon className="size-6 text-primary" />
+        <UploadCloudIcon className="size-6 text-marca-verde-escuro" />
         <div className="text-[13px] font-medium">{enviando ? "Anexando…" : "Anexar orçamento do fornecedor"}</div>
         <div className="text-xs text-muted-foreground">Arraste o PDF, foto ou planilha aqui, ou clique para escolher. Pode ser vários.</div>
         <input

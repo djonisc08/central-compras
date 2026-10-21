@@ -4,6 +4,7 @@ import {
   fornecedores,
   materiais,
   obras,
+  pedidoItens,
   pedidos,
   propostaItens,
   propostas,
@@ -368,8 +369,21 @@ export function excluirProposta(db: DB, propostaId: number) {
   const p = db.select().from(propostas).where(eq(propostas.id, propostaId)).get();
   if (!p) return;
   garantirEditavel(db, p.requisicaoId);
-  db.delete(propostas).where(eq(propostas.id, propostaId)).run();
+  db.transaction((tx) => {
+    soltarDePedidosCancelados(tx as unknown as DB, { propostaIds: [propostaId] });
+    tx.delete(propostas).where(eq(propostas.id, propostaId)).run();
+  });
   recalcularStatusRequisicao(db, p.requisicaoId);
+}
+
+/**
+ * Pedidos cancelados continuam no histórico apontando para itens e propostas. Antes de excluir esses
+ * registros, solta a referência (senão o banco recusa a exclusão).
+ */
+export function soltarDePedidosCancelados(db: DB, ref: { requisicaoItemIds?: number[]; propostaIds?: number[] }) {
+  if (ref.requisicaoItemIds?.length)
+    db.update(pedidoItens).set({ requisicaoItemId: null }).where(inArray(pedidoItens.requisicaoItemId, ref.requisicaoItemIds)).run();
+  if (ref.propostaIds?.length) db.update(pedidos).set({ propostaId: null }).where(inArray(pedidos.propostaId, ref.propostaIds)).run();
 }
 
 /** Define (ou remove, com propostaId null) o vencedor de um item. */
@@ -412,7 +426,7 @@ export function marcarMenoresPrecos(db: DB, requisicaoId: number) {
     for (const l of mapa.resumo.linhas) {
       tx.update(propostaItens).set({ vencedora: false }).where(eq(propostaItens.requisicaoItemId, l.item.id)).run();
       if (l.menorTotal == null) continue;
-      const cands = l.celulas.filter((c) => c.total === l.menorTotal);
+      const cands = l.celulas.filter((c) => c.totalLiquido === l.menorTotal);
       const esc =
         cands.find((c) => marcadas.has(c.propostaId)) ??
         cands.sort((a, b) => (fretes.get(a.propostaId) ?? 0) - (fretes.get(b.propostaId) ?? 0))[0];
@@ -428,6 +442,8 @@ export function marcarMenoresPrecos(db: DB, requisicaoId: number) {
 
 /** Marca um fornecedor como vencedor de todos os itens que ele cotou. */
 export function marcarFornecedorVencedor(db: DB, requisicaoId: number, propostaId: number) {
+  const prop = db.select({ requisicaoId: propostas.requisicaoId }).from(propostas).where(eq(propostas.id, propostaId)).get();
+  if (!prop || prop.requisicaoId !== requisicaoId) throw new Error("Proposta não pertence a esta requisição");
   garantirEditavel(db, requisicaoId);
   const itensCotados = db
     .select({ id: propostaItens.requisicaoItemId })

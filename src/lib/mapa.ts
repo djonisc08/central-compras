@@ -59,6 +59,8 @@ export type Celula = {
   propostaId: number;
   preco: number | null; // null = não cotou / indisponível
   total: number | null;
+  /** Total da linha já com a parte do desconto negociado do fornecedor: é o que vale para comparar. */
+  totalLiquido: number | null;
   marca: string | null;
   ehMenor: boolean;
   ehMaior: boolean;
@@ -123,11 +125,27 @@ export function calcularMapa(
     return pi;
   };
 
+  const qtdDe = new Map(itens.map((i) => [i.id, i.quantidade]));
+  const brutoDe = (pi: MapaPropostaEntrada["itens"][number]) =>
+    pi.totalCentavos ?? totalItem(qtdDe.get(pi.requisicaoItemId) ?? 0, pi.precoUnitarioCentavos);
+  // Desconto negociado vira um fator sobre cada linha do fornecedor (1 − desconto ÷ subtotal).
+  const fator = new Map(
+    propostas.map((p) => {
+      const sub = p.itens.filter((pi) => pi.disponivel && qtdDe.has(pi.requisicaoItemId)).reduce((s, pi) => s + brutoDe(pi), 0);
+      const neg = Math.min(p.descontoNegociadoCentavos ?? 0, sub);
+      return [p.id, sub > 0 ? 1 - neg / sub : 1];
+    }),
+  );
+
   const linhas: LinhaMapa[] = itens.map((item) => {
-    const totalDe = (pi: MapaPropostaEntrada["itens"][number]) => pi.totalCentavos ?? totalItem(item.quantidade, pi.precoUnitarioCentavos);
-    const cotadas = propostas.map((p) => precoDe(p, item.id)).filter((x) => x != null);
-    const precos = cotadas.map((pi) => pi.precoUnitarioCentavos);
-    const totais = cotadas.map(totalDe);
+    const totalDe = brutoDe;
+    const liquidoDe = (p: MapaPropostaEntrada, pi: MapaPropostaEntrada["itens"][number]) => Math.round(totalDe(pi) * (fator.get(p.id) ?? 1));
+    const cotadas = propostas.map((p) => ({ p, pi: precoDe(p, item.id) })).filter((x) => x.pi != null) as {
+      p: MapaPropostaEntrada;
+      pi: MapaPropostaEntrada["itens"][number];
+    }[];
+    const precos = cotadas.map((c) => c.pi.precoUnitarioCentavos);
+    const totais = cotadas.map((c) => liquidoDe(c.p, c.pi));
     const menor = totais.length ? Math.min(...totais) : null;
     const maior = totais.length ? Math.max(...totais) : null;
 
@@ -139,6 +157,7 @@ export function calcularMapa(
       const pi = precoDe(p, item.id);
       const preco = pi?.precoUnitarioCentavos ?? null;
       const total = pi ? totalDe(pi) : null;
+      const liquido = pi ? liquidoDe(p, pi) : null;
       const vencedora = !!pi?.vencedora;
       if (vencedora && preco != null) {
         precoEscolhido = preco;
@@ -149,14 +168,16 @@ export function calcularMapa(
         propostaId: p.id,
         preco,
         total,
+        totalLiquido: liquido,
         marca: pi?.marca ?? null,
-        ehMenor: total != null && total === menor && totais.length > 1,
-        ehMaior: total != null && total === maior && totais.length > 1 && maior !== menor,
+        ehMenor: liquido != null && liquido === menor && totais.length > 1,
+        ehMaior: liquido != null && liquido === maior && totais.length > 1 && maior !== menor,
         vencedora,
       };
     });
 
-    const economia = totalEscolhido != null && maior != null && totais.length > 1 ? maior - totalEscolhido : 0;
+    const escolhida = celulas.find((c) => c.vencedora && c.totalLiquido != null);
+    const economia = escolhida && maior != null && totais.length > 1 ? maior - escolhida.totalLiquido! : 0;
 
     return {
       item,
@@ -231,7 +252,7 @@ export function calcularMapa(
       continue;
     }
     // Em empate, prefere o fornecedor já envolvido para não somar outro frete.
-    const candidatas = l.celulas.filter((c) => c.total === l.menorTotal);
+    const candidatas = l.celulas.filter((c) => c.totalLiquido === l.menorTotal);
     const escolhida =
       candidatas.find((c) => envolvidas.has(c.propostaId)) ??
       candidatas.sort(
@@ -240,7 +261,7 @@ export function calcularMapa(
           (propostas.find((p) => p.id === b.propostaId)?.freteCentavos ?? 0),
       )[0];
     envolvidas.add(escolhida.propostaId);
-    somaMenores += escolhida.total ?? 0;
+    somaMenores += escolhida.totalLiquido ?? 0;
   }
   const fretes = propostas
     .filter((p) => envolvidas.has(p.id))

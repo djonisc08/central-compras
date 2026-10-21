@@ -77,7 +77,7 @@ export function MapaComparativo({
   function menoresPrecos() {
     const otimista: Escolhas = {};
     for (const l of resumo.linhas) {
-      const c = l.celulas.find((x) => x.total === l.menorTotal && x.total != null);
+      const c = l.celulas.find((x) => x.totalLiquido === l.menorTotal && x.totalLiquido != null);
       otimista[l.item.id] = c?.propostaId ?? null;
     }
     rodar(otimista, () => marcarMenoresPrecosAction(requisicaoId));
@@ -130,7 +130,7 @@ export function MapaComparativo({
                   {melhorUnicoAtrasa && <span className="font-medium text-st-urgente"> · não chega a tempo</span>}
                 </span>
                 {editavel && (
-                  <button type="button" className="shrink-0 cursor-pointer font-medium text-primary hover:underline" onClick={() => vencerTudo(resumo.melhorUnico!.propostaId)}>
+                  <button type="button" className="shrink-0 cursor-pointer font-medium text-marca-verde-escuro hover:underline" onClick={() => vencerTudo(resumo.melhorUnico!.propostaId)}>
                     Escolher
                   </button>
                 )}
@@ -158,7 +158,7 @@ export function MapaComparativo({
                 )}
               </span>
               {editavel && (
-                <button type="button" className="shrink-0 cursor-pointer font-medium text-primary hover:underline" onClick={menoresPrecos}>
+                <button type="button" className="shrink-0 cursor-pointer font-medium text-marca-verde-escuro hover:underline" onClick={menoresPrecos}>
                   Aplicar
                 </button>
               )}
@@ -387,7 +387,7 @@ export function MapaComparativo({
                 rotulo="Vencedor em"
                 colunas={resumo.colunas.map((c) =>
                   c.itensVencidos ? (
-                    <span key={c.proposta.id} className="font-medium text-primary">
+                    <span key={c.proposta.id} className="font-medium text-marca-verde-escuro">
                       {c.itensVencidos} {c.itensVencidos === 1 ? "item" : "itens"} · {formatarReais(c.valorVencido + c.proposta.freteCentavos)}
                     </span>
                   ) : (

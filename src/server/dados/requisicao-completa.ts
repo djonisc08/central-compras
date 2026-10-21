@@ -2,7 +2,7 @@
 // Valida tudo antes, cadastra os materiais novos (com o texto da obra como sinônimo) e grava.
 import { eq } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { materiais, obras, requisicaoItens, requisicoes } from "@/db/schema";
+import { materiais, obras, propostaItens, requisicaoItens, requisicoes } from "@/db/schema";
 import { diasEntre, hojeISO } from "@/lib/datas";
 import { requisicaoSchema } from "@/lib/validacao";
 import { buscarMateriais, normalizarTexto } from "@/lib/normalizar";
@@ -15,7 +15,7 @@ import {
   obterObraPorNome,
   salvarMaterial,
 } from "./cadastros";
-import { criarRequisicao, recalcularStatusRequisicao, temPedidosAtivos } from "./requisicoes";
+import { criarRequisicao, recalcularStatusRequisicao, soltarDePedidosCancelados, temPedidosAtivos } from "./requisicoes";
 
 export type NovoMaterialEntrada = {
   nome: string;
@@ -190,6 +190,12 @@ export function atualizarRequisicaoCompleta(db: DB, requisicaoId: number, p: Req
       if (atual && atual.materialId === i.materialId) {
         mantidos.add(atual.id);
         tx.update(requisicaoItens).set({ quantidade: i.quantidade, especificacao: i.especificacao }).where(eq(requisicaoItens.id, atual.id)).run();
+        // Quantidade mudou: o total exato que o fornecedor deu era para a quantidade antiga. Vale preço × nova quantidade.
+        if (atual.quantidade !== i.quantidade)
+          tx.update(propostaItens)
+            .set({ totalCentavos: null, quantidadeCotada: null, unidadeCotada: null })
+            .where(eq(propostaItens.requisicaoItemId, atual.id))
+            .run();
       } else {
         tx.insert(requisicaoItens).values({ requisicaoId, materialId: i.materialId, quantidade: i.quantidade, especificacao: i.especificacao }).run();
       }
@@ -206,6 +212,7 @@ export function atualizarRequisicaoCompleta(db: DB, requisicaoId: number, p: Req
       itens: itens.map(semId),
     });
     const removidos = [...atuais.keys()].filter((id) => !mantidos.has(id));
+    soltarDePedidosCancelados(tx as unknown as DB, { requisicaoItemIds: removidos });
     for (const id of removidos) tx.delete(requisicaoItens).where(eq(requisicaoItens.id, id)).run();
 
     tx.update(requisicoes)

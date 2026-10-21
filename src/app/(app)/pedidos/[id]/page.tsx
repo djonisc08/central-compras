@@ -108,10 +108,10 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
             <CardHeader>
               <CardTitle>Itens</CardTitle>
               <div className="flex gap-3">
-              <Link href={`/requisicoes/${p.requisicaoId}/mapa`} className="text-xs text-primary hover:underline">
+              <Link href={`/requisicoes/${p.requisicaoId}/mapa`} className="text-xs text-marca-verde-escuro hover:underline">
                 Requisição #{p.requisicaoId} · mapa
               </Link>
-              <a href={`/imprimir/financeiro/${p.requisicaoId}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+              <a href={`/imprimir/financeiro/${p.requisicaoId}`} target="_blank" rel="noreferrer" className="text-xs text-marca-verde-escuro hover:underline">
                 Resumo p/ financeiro
               </a>
               </div>
@@ -303,7 +303,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
                       dataEmissao: p.dataEmissao,
                       prazoPrometido: p.prazoPrometido,
                       observacoes: p.observacoes,
-                      razaoSocial: p.obraRazaoSocial ?? empresa.razaoSocial,
+                      razaoSocial: p.obraRazaoSocial,
                       cnpj: p.obraCnpj,
                       cno: p.obraCno,
                       endereco: p.obraEndereco,

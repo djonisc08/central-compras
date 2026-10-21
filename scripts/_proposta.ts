@@ -82,9 +82,11 @@ export function prepararProposta(db: DB, r: RascunhoProposta) {
     if (parecido) avisos.push(`Fornecedor novo parecido com "${parecido.nome}" (id ${parecido.id}). É o mesmo?`);
   } else throw new Error("Informe o fornecedor (nome, id ou { novo: {...} })");
 
+  let descontoAnterior = 0;
   if (fornecedorId) {
-    const existe = db.select({ id: propostas.id }).from(propostas).where(and(eq(propostas.requisicaoId, req.id), eq(propostas.fornecedorId, fornecedorId))).get();
+    const existe = db.select({ id: propostas.id, desconto: propostas.descontoNegociadoCentavos }).from(propostas).where(and(eq(propostas.requisicaoId, req.id), eq(propostas.fornecedorId, fornecedorId))).get();
     if (existe) avisos.push(`Já existe proposta de ${fornecedorNome} nesta requisição: gravar vai SUBSTITUIR a anterior.`);
+    descontoAnterior = existe?.desconto ?? 0;
   }
 
   const hoje = hojeISO();
@@ -168,7 +170,7 @@ export function prepararProposta(db: DB, r: RascunhoProposta) {
     arquivoOrigem: r.arquivoOrigem ?? null,
     observacoes: r.observacoes ?? null,
     totalDocumentoCentavos,
-    descontoNegociadoCentavos: paraCentavos(r.descontoNegociado) ?? 0,
+    descontoNegociadoCentavos: paraCentavos(r.descontoNegociado) ?? descontoAnterior,
     itens: linhas.map((l) => ({
       requisicaoItemId: l.it.id,
       precoUnitarioCentavos: l.preco,

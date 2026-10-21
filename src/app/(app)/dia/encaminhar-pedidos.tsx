@@ -95,7 +95,7 @@ export function EncaminharPedidos({ pedidos, titulo }: { pedidos: PedidoDoDia[];
               </span>
               <span className="shrink-0 text-right">
                 <span className="tabular block text-[13px] font-medium">{formatarReais(p.valorTotalCentavos)}</span>
-                <Link href={`/pedidos/${p.id}`} className="text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                <Link href={`/pedidos/${p.id}`} className="text-xs text-marca-verde-escuro hover:underline" onClick={(e) => e.stopPropagation()}>
                   abrir
                 </Link>
               </span>

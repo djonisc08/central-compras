@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, like, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import {
   propostaItens,
+  propostas,
   requisicaoItens,
   avaliacoesFornecedor,
   entregas,
@@ -136,12 +137,12 @@ export function gerarPedidos(db: DB, entrada: GerarPedidosInput) {
  * Itens que ficaram sem fornecedor no fechamento vão para uma requisição de SALDO
  * (mesma obra e dados), que segue em cotação com outros fornecedores.
  */
-export function separarSaldo(db: DB, requisicaoId: number) {
+export function separarSaldo(db: DB, requisicaoId: number, itemIds?: number[], motivo?: string) {
   const mapa = obterMapa(db, requisicaoId);
   if (!mapa) throw new Error("Requisição não encontrada");
-  const faltando = mapa.resumo.linhas.filter((l) => l.propostaEscolhidaId == null).map((l) => l.item.id);
+  const faltando = itemIds ?? mapa.resumo.linhas.filter((l) => l.propostaEscolhidaId == null).map((l) => l.item.id);
   if (!faltando.length) return null;
-  if (faltando.length === mapa.resumo.linhas.length) throw new Error("Escolha o fornecedor de pelo menos um item");
+  if (!itemIds && faltando.length === mapa.resumo.linhas.length) throw new Error("Escolha o fornecedor de pelo menos um item");
   const r = db.select().from(requisicoes).where(eq(requisicoes.id, requisicaoId)).get()!;
   return db.transaction((tx) => {
     const saldoId = tx
@@ -153,11 +154,23 @@ export function separarSaldo(db: DB, requisicaoId: number) {
         dataNecessidade: r.dataNecessidade,
         urgente: r.urgente,
         origemTexto: r.origemTexto,
-        observacoes: [`Saldo da requisição #${requisicaoId}: itens que não foram fechados com os primeiros fornecedores.`, r.observacoes].filter(Boolean).join("\n"),
+        observacoes: [
+          `Saldo da requisição #${requisicaoId}: ${motivo ?? "itens que não foram fechados com os primeiros fornecedores."}`,
+          r.observacoes,
+        ]
+          .filter(Boolean)
+          .join("\n"),
         status: "aberta",
       })
       .returning({ id: requisicoes.id })
       .get().id;
+    // O desconto negociado era sobre todos os itens da proposta: ao tirar itens, reduz na mesma proporção.
+    for (const c of mapa.resumo.colunas) {
+      const neg = c.proposta.descontoNegociadoCentavos ?? 0;
+      if (!neg || !c.subtotal) continue;
+      const saem = mapa.resumo.linhas.filter((l) => faltando.includes(l.item.id)).reduce((s, l) => s + (l.celulas.find((x) => x.propostaId === c.proposta.id)?.total ?? 0), 0);
+      if (saem) tx.update(propostas).set({ descontoNegociadoCentavos: Math.round((neg * (c.subtotal - saem)) / c.subtotal) }).where(eq(propostas.id, c.proposta.id)).run();
+    }
     tx.delete(propostaItens).where(inArray(propostaItens.requisicaoItemId, faltando)).run();
     tx.update(requisicaoItens).set({ requisicaoId: saldoId }).where(inArray(requisicaoItens.id, faltando)).run();
     return saldoId;
@@ -328,7 +341,13 @@ export function editarPedido(db: DB, id: number, entrada: EdicaoPedidoInput) {
   const p = obterPedido(db, id);
   if (!p) throw new Error("Pedido não encontrado");
   if (p.status === "cancelado") throw new Error("Pedido cancelado não pode ser editado");
-  if (d.dataAprovacao && d.dataEmissao && d.dataEmissao < d.dataAprovacao) throw new Error("A emissão não pode ser antes da aprovação");
+  // Valida as datas como vão ficar (o que foi digitado + o que já estava).
+  const aprovacao = d.dataAprovacao ?? p.dataAprovacao;
+  const emissao = d.dataEmissao ?? p.dataEmissao;
+  const prazo = d.prazoPrometido ?? p.prazoPrometido;
+  if (d.dataEmissao && !p.numero) throw new Error("Este pedido ainda não foi emitido: use o botão Emitir para gerar o número.");
+  if (aprovacao && emissao && emissao < aprovacao) throw new Error("A emissão não pode ser antes da aprovação");
+  if (emissao && prazo && prazo < emissao) throw new Error("A entrega prometida não pode ser antes da emissão");
   const igual = (v: string | null | undefined, ficha: string | null) => (v && v !== (ficha ?? "") ? v : null);
   db.update(pedidos)
     .set({
@@ -405,8 +424,24 @@ export function cancelarPedido(db: DB, id: number, motivo: string) {
   const p = carregar(db, id);
   if (["entregue", "entregue_parcial"].includes(p.status)) throw new Error("Pedido com entrega registrada não pode ser cancelado");
   if (!motivo.trim()) throw new Error("Informe o motivo do cancelamento");
-  db.update(pedidos).set({ status: "cancelado", motivoCancelamento: motivo.trim() }).where(eq(pedidos.id, id)).run();
-  recalcularStatusRequisicao(db, p.requisicaoId);
+  return db.transaction((tx) => {
+    const t = tx as unknown as DB;
+    t.update(pedidos).set({ status: "cancelado", motivoCancelamento: motivo.trim() }).where(eq(pedidos.id, id)).run();
+    // A cotação tem outros pedidos ativos: os itens deste vão para uma requisição de saldo, para cotar de novo.
+    let saldoId: number | null = null;
+    if (temPedidosAtivos(t, p.requisicaoId)) {
+      const itens = t
+        .select({ id: pedidoItens.requisicaoItemId })
+        .from(pedidoItens)
+        .where(eq(pedidoItens.pedidoId, id))
+        .all()
+        .map((i) => i.id)
+        .filter((x): x is number => x != null);
+      saldoId = separarSaldo(t, p.requisicaoId, itens, `itens do pedido ${p.numero ?? `#${id}`} cancelado (${motivo.trim()}).`);
+    }
+    recalcularStatusRequisicao(t, p.requisicaoId);
+    return { saldoId };
+  });
 }
 
 export function registrarEntrega(db: DB, id: number, entrada: EntregaInput) {

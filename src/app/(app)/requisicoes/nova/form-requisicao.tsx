@@ -80,8 +80,9 @@ export function FormRequisicao({
   const [observacoes, setObservacoes] = useState(editar?.observacoes ?? "");
   const [linhas, setLinhas] = useState<Linha[]>(() =>
     editar
-      ? editar.itens.map((i) => ({
-          chave: seq++,
+      ? editar.itens.map((i, idx) => ({
+          // Chaves iniciais fixas (negativas): servidor e navegador geram o mesmo HTML.
+          chave: -(idx + 1),
           itemId: i.id,
           materialId: i.materialId,
           novo: null,
@@ -89,7 +90,7 @@ export function FormRequisicao({
           especificacao: i.especificacao ?? "",
           textoOriginal: null,
         }))
-      : [novaLinha()],
+      : [{ ...novaLinha(), chave: -1 }],
   );
   const [colado, setColado] = useState("");
   const [alertas, setAlertas] = useState<string[]>([]);
@@ -241,7 +242,7 @@ export function FormRequisicao({
         <CardHeader className="pb-2">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <ClipboardPasteIcon className="size-4 text-primary" /> {editar ? "Colar itens adicionais do WhatsApp" : "Colar pedido do WhatsApp"}
+              <ClipboardPasteIcon className="size-4 text-marca-verde-escuro" /> {editar ? "Colar itens adicionais do WhatsApp" : "Colar pedido do WhatsApp"}
             </CardTitle>
             <CardDescription>
               {editar
@@ -464,7 +465,7 @@ export function FormRequisicao({
                       className={cn("h-7 w-52 text-xs", !l.novo.categoria && "border-st-atencao")}
                     />
                     {!categorias.some((c) => c.nome === l.novo!.categoria) && l.novo.categoria && <Badge tom="info">categoria nova</Badge>}
-                    <button type="button" className="cursor-pointer text-primary hover:underline" onClick={() => atualizar(l.chave, { novo: null })}>
+                    <button type="button" className="cursor-pointer text-marca-verde-escuro hover:underline" onClick={() => atualizar(l.chave, { novo: null })}>
                       usar um do catálogo
                     </button>
                   </div>

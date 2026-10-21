@@ -86,7 +86,7 @@ export default async function PedidosPage({ searchParams }: PageProps<"/pedidos"
                 {lista.map((p) => (
                   <TableRow key={p.id} className="group relative">
                     <TableCell className="whitespace-nowrap">
-                      <Link href={`/pedidos/${p.id}`} className="font-medium after:absolute after:inset-0 group-hover:text-primary">
+                      <Link href={`/pedidos/${p.id}`} className="font-medium after:absolute after:inset-0 group-hover:text-marca-verde-escuro">
                         {p.numero ?? <span className="text-muted-foreground">Rascunho #{p.id}</span>}
                       </Link>
                       <div className="text-xs text-muted-foreground">Req. #{p.requisicaoId}</div>

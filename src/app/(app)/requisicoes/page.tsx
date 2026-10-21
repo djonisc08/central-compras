@@ -117,7 +117,7 @@ export default async function RequisicoesPage({ searchParams }: PageProps<"/requ
                     <TableCell className="max-w-md">
                       <div className="flex items-center gap-2">
                         {r.urgente && <UrgenteBadge />}
-                        <span className="truncate font-medium group-hover:text-primary">{r.resumoItens}</span>
+                        <span className="truncate font-medium group-hover:text-marca-verde-escuro">{r.resumoItens}</span>
                         {r.qtdItens > 3 && <span className="shrink-0 text-xs text-muted-foreground">+{r.qtdItens - 3}</span>}
                       </div>
                     </TableCell>

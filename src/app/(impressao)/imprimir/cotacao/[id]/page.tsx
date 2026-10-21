@@ -32,7 +32,7 @@ export default async function ImprimirCotacaoPage({ params, searchParams }: Page
   const hoje = hojeISO();
   const prazoResposta = r.urgente ? hoje : somarDias(hoje, 2);
 
-  const th = "border border-zinc-300 bg-zinc-100 px-2 py-1.5 text-left font-semibold";
+  const th = "border border-marca-preto bg-marca-preto px-2 py-1.5 text-left font-semibold text-white";
   const td = "border border-zinc-300 px-2 py-2";
   const preencher = "border border-zinc-300 bg-amber-50/60 px-2 py-2";
 
@@ -45,7 +45,7 @@ export default async function ImprimirCotacaoPage({ params, searchParams }: Page
           <div>
             Nº <strong>{r.id}</strong> · {formatarData(hoje)}
           </div>
-          {r.urgente && <div className="font-bold text-red-700">URGENTE</div>}
+          {r.urgente && <div className="font-bold text-[#ff8a7a]">URGENTE</div>}
         </>
       }
     >
@@ -66,7 +66,7 @@ export default async function ImprimirCotacaoPage({ params, searchParams }: Page
         </div>
       </section>
 
-      <section className="mb-4 rounded border-2 border-[#0F4C5C]/70 p-3">
+      <section className="mb-4 rounded border-2 border-marca-verde p-3">
         <Rotulo>Dados para orçamento e faturamento — usar exatamente estes dados</Rotulo>
         <div className="mt-1 grid grid-cols-[1.4fr_1fr] gap-x-6 gap-y-1">
           <Linha rotulo="Razão social" valor={r.razaoSocialObra ?? empresa.razaoSocial} />
@@ -162,7 +162,7 @@ function Linha({ rotulo, valor, destaque }: { rotulo: string; valor: string; des
   return (
     <div className="flex gap-2">
       <span className="w-28 shrink-0 text-zinc-500">{rotulo}</span>
-      <span className={destaque ? "font-bold text-[#0F4C5C]" : "font-medium"}>{valor}</span>
+      <span className={destaque ? "font-bold text-marca-verde-escuro" : "font-medium"}>{valor}</span>
     </div>
   );
 }

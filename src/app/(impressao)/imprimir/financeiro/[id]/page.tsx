@@ -6,9 +6,10 @@ import { listarFornecedores } from "@/server/dados/cadastros";
 import { obterEmpresa } from "@/server/dados/empresa";
 import { listarPedidos, obterPedido } from "@/server/dados/pedidos";
 import { obterMapa } from "@/server/dados/requisicoes";
-import { formatarData, hojeISO, somarDias } from "@/lib/datas";
+import { formatarData, hojeISO } from "@/lib/datas";
 import { formatarNumero, formatarReais } from "@/lib/dinheiro";
 import { formatarCnpj, formatarWhatsapp } from "@/lib/normalizar";
+import { previsaoEntrega } from "@/lib/mapa";
 import { calcularVencimentos } from "@/lib/vencimentos";
 import { Folha } from "../../../folha";
 
@@ -38,7 +39,7 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
     ? pedidosReq.reduce((s, p) => s + p.valorTotalCentavos, 0)
     : resumo.totalEscolhido;
 
-  const th = "border border-zinc-400 bg-zinc-100 px-1.5 py-1 font-semibold";
+  const th = "border border-zinc-300 bg-marca-bege px-1.5 py-1 font-semibold";
   const td = "border border-zinc-300 px-1.5 py-1";
   const vermelho = "text-[#B42318]";
 
@@ -57,7 +58,7 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
       }
     >
       <section className="mb-3 grid grid-cols-[1.4fr_1fr] gap-4 text-[11.5px]">
-        <div className="rounded border-2 border-[#0F4C5C]/70 p-2.5">
+        <div className="rounded border-2 border-marca-verde p-2.5">
           <div className="text-[9.5px] font-semibold tracking-wide text-zinc-500 uppercase">Empresa / faturamento</div>
           <div className="font-bold">{fat?.obraRazaoSocial ?? r.razaoSocialObra ?? empresa.razaoSocial}</div>
           <div>
@@ -108,7 +109,8 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
                 (c) => {
                   const p = pedidoDe(c.proposta.fornecedorId);
                   if (p?.prazoPrometido) return formatarData(p.prazoPrometido);
-                  return c.proposta.prazoEntregaDias != null ? formatarData(somarDias(c.proposta.dataCotacao, c.proposta.prazoEntregaDias)) : "—";
+                  const previsto = previsaoEntrega(c.proposta.prazoEntregaDias, hojeISO());
+                  return previsto ? `~${formatarData(previsto)}` : "—";
                 },
               ],
               ["Nº pedido", (c) => pedidoDe(c.proposta.fornecedorId)?.numero ?? "—"],
@@ -171,7 +173,7 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
           ).map(([rot, f]) => (
             <tr key={rot} className={rot === "Preço total" ? "font-bold" : ""}>
               <td className={`${td} bg-zinc-50`} colSpan={3} />
-              <td className={`${td} bg-zinc-100 font-semibold`}>{rot}</td>
+              <td className={`${td} bg-marca-bege font-semibold`}>{rot}</td>
               {cols.map((c) => (
                 <td key={c.proposta.id} className={`${td} bg-zinc-50 text-right ${rot === "Preço total" ? vermelho : ""}`}>
                   {f(c)}
@@ -183,10 +185,10 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
       </table>
 
       <section className="sem-quebra mt-5">
-        <div className="mb-1.5 text-[9.5px] font-bold tracking-[0.08em] text-[#B4532A] uppercase">Programação de pagamento</div>
+        <div className="mb-1.5 text-[9.5px] font-bold tracking-[0.08em] text-marca-verde-escuro uppercase">Programação de pagamento</div>
         <table className="tabular w-full border-collapse text-[11px]">
           <thead>
-            <tr className="bg-[#1f2a37] text-white">
+            <tr className="bg-marca-preto text-white">
               {["Fornecedor", "Pedido", "Condição", "Vencimento", "Valor"].map((h, i) => (
                 <th key={h} className={`px-2 py-1 font-semibold ${i === 4 ? "text-right" : "text-left"}`}>
                   {h}

@@ -314,7 +314,13 @@ export function AcoesPedido({
             <Button variant="outline" onClick={fechar}>
               Voltar
             </Button>
-            <Button variant="destructive" disabled={pendente} onClick={() => rodar(() => cancelarPedidoAction(pedido.id, motivo), () => "Pedido cancelado")}>
+            <Button variant="destructive" disabled={pendente} onClick={() => rodar(
+                  () => cancelarPedidoAction(pedido.id, motivo),
+                  (d) => {
+                    const saldo = (d as { saldoId: number | null } | undefined)?.saldoId;
+                    return saldo ? `Pedido cancelado. Os itens foram para a requisição #${saldo}, para cotar de novo.` : "Pedido cancelado";
+                  },
+                )}>
               Cancelar pedido
             </Button>
           </DialogFooter>

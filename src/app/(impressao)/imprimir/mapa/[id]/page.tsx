@@ -26,7 +26,7 @@ export default async function ImprimirMapaPage({ params }: PageProps<"/imprimir/
   const cols = resumo.colunas;
   const hoje = hojeISO();
   const sugestao = textoSugestao(resumo, hoje, r.dataNecessidade);
-  const th = "border border-zinc-300 bg-zinc-100 px-1.5 py-1 font-semibold";
+  const th = "border border-zinc-300 bg-marca-bege px-1.5 py-1 font-semibold";
   const td = "border border-zinc-300 px-1.5 py-1";
 
   return (
@@ -39,7 +39,7 @@ export default async function ImprimirMapaPage({ params }: PageProps<"/imprimir/
           <div>
             Nº <strong>{r.id}</strong> · emitido em {formatarData(hojeISO())}
           </div>
-          {r.urgente && <div className="font-bold text-red-700">URGENTE</div>}
+          {r.urgente && <div className="font-bold text-[#ff8a7a]">URGENTE</div>}
         </>
       }
     >
@@ -100,7 +100,7 @@ export default async function ImprimirMapaPage({ params }: PageProps<"/imprimir/
                 {formatarNumero(l.item.quantidade)} {l.item.unidade}
               </td>
               {l.celulas.map((c) => {
-                const bg = c.vencedora ? "bg-[#d7e9ee] font-bold" : c.ehMenor ? "bg-[#e3f4ea]" : "";
+                const bg = c.vencedora ? "bg-marca-bege font-bold" : c.ehMenor ? "bg-[#e3f7ea]" : "";
                 return [
                   <td key={`u${c.propostaId}`} className={`${td} text-right ${bg}`}>
                     {c.preco == null ? "—" : formatarReais(c.preco)}
@@ -187,8 +187,8 @@ export default async function ImprimirMapaPage({ params }: PageProps<"/imprimir/
 
       <p className="mt-3 text-[10px] text-zinc-500">Legenda: verde = menor preço do item · azul/negrito com ✓ = vencedor escolhido.</p>
 
-      <section className="sem-quebra mt-4 rounded border-l-4 border-[#0F4C5C] bg-zinc-50 p-3">
-        <div className="text-[9.5px] font-semibold tracking-wide text-[#0F4C5C] uppercase">Sugestão de compras</div>
+      <section className="sem-quebra mt-4 rounded border-l-4 border-marca-verde bg-zinc-50 p-3">
+        <div className="text-[9.5px] font-semibold tracking-wide text-marca-verde-escuro uppercase">Sugestão de compras</div>
         <p className="mt-1 text-[11.5px] leading-relaxed">{sugestao}</p>
       </section>
 
