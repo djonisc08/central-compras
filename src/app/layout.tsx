@@ -6,11 +6,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "Central de Compras", template: "%s · Central de Compras" },
   description: "Cotação, mapa comparativo, pedidos e indicadores de suprimentos da obra.",
+  icons: { icon: "/marca/icone-192.png", apple: "/marca/icone-192.png" },
+  appleWebApp: { capable: true, title: "Compras MAX", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: light)", color: "#141414" },
     { media: "(prefers-color-scheme: dark)", color: "#14171c" },
   ],
 };

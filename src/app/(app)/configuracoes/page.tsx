@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { getDb } from "@/db/client";
 import { obterEmpresa } from "@/server/dados/empresa";
 import { PageHeader } from "@/components/page-header";
+import { AbrirNoCelular } from "./abrir-no-celular";
 import { FormEmpresa } from "./form-empresa";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -13,6 +14,7 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader titulo="Configurações" descricao="Dados da empresa usados no cabeçalho do mapa e do pedido de compra." />
+      <AbrirNoCelular porta={Number(process.env.PORT) || 3000} />
       <FormEmpresa empresa={empresa} />
     </div>
   );
