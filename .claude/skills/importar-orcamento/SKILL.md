@@ -7,6 +7,13 @@ description: Lê orçamentos de fornecedores (PDF, foto, print, texto do WhatsAp
 
 Objetivo: tirar a digitação do comprador. Ler o orçamento, conferir item a item contra a requisição, apontar armadilhas e gravar a proposta **só depois do OK**.
 
+## Onde estão os arquivos
+
+- Anexados pela tela da requisição: `entrada/req-<id>-<AAAAMMDD-HHMM>-<nome>.pdf` — o número da requisição já vem no nome.
+  "Importa os anexos da requisição #9" = todos os `entrada/req-9-*`.
+- Soltos na pasta `entrada/` (sem prefixo): descubra a requisição pelo conteúdo (nº da cotação, obra, itens) e confirme.
+- Depois de gravar, o arquivo vai para `entrada/processados/` e some da lista "aguardando importação" da tela.
+
 ## Regras
 - **Nunca** edite `data/compras.db` nem rode SQL. Grave só com `npm run gravar:proposta` ou `npm run ler:planilha`.
 - **Sempre** mostre a prévia com os avisos e espere a confirmação antes de `--confirmar`.

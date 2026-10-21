@@ -19,6 +19,8 @@ import { diasEntre, formatarData, hojeISO, prazoRelativo } from "@/lib/datas";
 import { formatarNumero, formatarReais } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 import { AcoesRequisicao } from "./acoes-requisicao";
+import { listarAnexosPendentes } from "@/server/anexos";
+import { AnexarOrcamento } from "./anexar-orcamento";
 import { PedirCotacao } from "./pedir-cotacao";
 import { PropostaAcoes } from "./proposta-acoes";
 
@@ -213,12 +215,13 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
                 </Button>
               </div>
             )}
-            <CardContent>
+            <CardContent className="grid gap-3">
+              {editavel && <AnexarOrcamento requisicaoId={r.id} pendentes={listarAnexosPendentes(r.id)} />}
               {resumo.colunas.length === 0 ? (
                 <Vazio
                   icone={<FileTextIcon />}
                   titulo="Nenhuma proposta ainda"
-                  descricao="Peça cotação aos fornecedores no quadro acima e lance as respostas aqui (ou use a skill importar-orcamento)."
+                  descricao="Peça cotação aos fornecedores no quadro acima e lance as respostas aqui (ou anexe o PDF acima e peça ao Claude)."
                   acao={
                     editavel && (
                       <Button asChild size="sm">
