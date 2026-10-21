@@ -102,7 +102,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
       )}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="grid min-w-0 content-start gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Itens</CardTitle>
@@ -235,7 +235,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
           )}
         </div>
 
-        <div className="grid min-w-0 content-start gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           <Card>
             <CardContent className="grid gap-3.5 pt-5 text-[13px]">
               <Info icone={<CalendarIcon />} rotulo="Linha do tempo">

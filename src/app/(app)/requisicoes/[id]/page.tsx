@@ -101,7 +101,7 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
       />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="grid min-w-0 content-start gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           <Card>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 sm:grid-cols-4">
               <Info icone={<UserIcon />} rotulo="Solicitante" valor={r.solicitante} />
@@ -279,7 +279,7 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
           </Card>
         </div>
 
-        <div className="grid min-w-0 content-start gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           {r.origemTexto && (
             <Card>
               <CardHeader>

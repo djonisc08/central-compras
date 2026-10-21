@@ -144,7 +144,13 @@ export function PedirCotacao({
           <div className="truncate text-xs text-muted-foreground">
             {f.contato ?? "—"}
             {f.whatsapp && wa && !ehCelular(f.whatsapp) && <span className="text-st-atencao"> · número fixo, pode não ter WhatsApp</span>}
-            {f.categorias.length > 0 && <> · {f.categorias.join(", ")}</>}
+            {f.categorias.length > 0 && (
+              <span title={f.categorias.join(", ")}>
+                {" "}
+                · {f.categorias.slice(0, 3).join(", ")}
+                {f.categorias.length > 3 && ` +${f.categorias.length - 3}`}
+              </span>
+            )}
           </div>
         </div>
         <Situacao f={f} />
@@ -204,7 +210,7 @@ export function PedirCotacao({
           {todosMarcados ? "Desmarcar todos" : "Marcar todos"}
         </Button>
       </CardHeader>
-      <CardContent className="grid gap-3">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-3">
         {grupos.length > 1 && (
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">Marcar por tipo:</span>
