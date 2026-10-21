@@ -5,7 +5,7 @@ description: Liga, reinicia, atualiza ou diagnostica a Central de Compras no Win
 
 # Manutenção da Central de Compras (Windows)
 
-O servidor roda **escondido** (sem janela), ligado por `Central de Compras.vbs` na inicialização do Windows. Porta 3000.
+O servidor roda **escondido** (sem janela) em **modo produção** (`npm run servir` → `scripts/servir.mjs`), ligado por `Central de Compras.vbs` na inicialização do Windows. Porta 3000. Quando o programa muda (git pull), o primeiro start recompila sozinho (1–2 min). Para programar/depurar use `npm run dev` em outra porta (`npx next dev -p 3001`), nunca no lugar do servidor da usuária.
 
 | Pedido | Comando (PowerShell, na pasta do projeto) |
 |---|---|

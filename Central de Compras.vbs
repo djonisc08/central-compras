@@ -5,8 +5,8 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 sh.CurrentDirectory = fso.GetParentFolderName(WScript.ScriptFullName)
 
 If Not Rodando() Then
-  sh.Run "cmd /c npm run --silent backup > data\backup.log 2>&1 & npm run dev > data\servidor.log 2>&1", 0, False
-  For i = 1 To 60
+  sh.Run "cmd /c npm run --silent backup > data\backup.log 2>&1 & npm run --silent servir > data\servidor.log 2>&1", 0, False
+  For i = 1 To 240
     WScript.Sleep 1000
     If Rodando() Then Exit For
   Next

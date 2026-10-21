@@ -24,7 +24,7 @@ Sistema pessoal do comprador de uma construtora. Roda local (Next.js + SQLite). 
 - Consultas: sempre `npm run --silent ctx -- ...` (JSON). Gravações: sempre prévia → OK do usuário → `--confirmar`.
 
 ## Comandos
-- `npm run dev` (local) · `npm run dev:rede` (acesso pelo celular na rede)
+- No PC da usuária o sistema roda com `npm run servir` (produção, recompila sozinho após git pull). `npm run dev` só para desenvolver.
 - `npm run seed -- --reset` recria os dados de exemplo (faz backup antes)
 - `npm run backup` · `npm test` · `npm run typecheck` · `npm run lint`
 - Mudou o schema? `npm run db:gerar` para criar a migration.
