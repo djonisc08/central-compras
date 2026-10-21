@@ -16,6 +16,7 @@ import { formatarNumero, formatarPercentual, formatarReais } from "@/lib/dinheir
 import { mensagemPedido } from "@/lib/mensagens";
 import { formatarCnpj, linkWhatsapp } from "@/lib/normalizar";
 import { cn } from "@/lib/utils";
+import { EditarPedido } from "./editar-pedido";
 import { AcoesPedido } from "./acoes-pedido";
 
 export async function generateMetadata({ params }: PageProps<"/pedidos/[id]">): Promise<Metadata> {
@@ -274,6 +275,9 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
                 )}
               </Info>
               <Info icone={<MapPinIcon />} rotulo="Faturamento e entrega">
+                {(p.fatCnpj || p.fatRazaoSocial || p.fatCno || p.fatEndereco || p.fatCep) && (
+                  <div className="mb-0.5 inline-flex rounded bg-st-atencao-bg px-1.5 py-0.5 text-[11px] font-medium text-st-atencao">corrigido neste pedido</div>
+                )}
                 <div className="font-medium">{p.obraRazaoSocial ?? empresa.razaoSocial}</div>
                 {p.obraCnpj && <div className="tabular">CNPJ {formatarCnpj(p.obraCnpj)}</div>}
                 {p.obraCno && <div className="tabular">CNO {p.obraCno}</div>}
@@ -287,6 +291,28 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
                 {p.fornecedorCnpj && <div className="tabular">CNPJ {formatarCnpj(p.fornecedorCnpj)}</div>}
                 <div className="text-muted-foreground">{[p.fornecedorContato, p.fornecedorEmail].filter(Boolean).join(" · ")}</div>
               </Info>
+              {p.status !== "cancelado" && (
+                <div className="border-t pt-3">
+                  <EditarPedido
+                    pedido={{
+                      id: p.id,
+                      numero: p.numero,
+                      condicaoPagamento: p.condicaoPagamento,
+                      aprovadoPor: p.aprovadoPor,
+                      dataAprovacao: p.dataAprovacao,
+                      dataEmissao: p.dataEmissao,
+                      prazoPrometido: p.prazoPrometido,
+                      observacoes: p.observacoes,
+                      razaoSocial: p.obraRazaoSocial ?? empresa.razaoSocial,
+                      cnpj: p.obraCnpj,
+                      cno: p.obraCno,
+                      endereco: p.obraEndereco,
+                      cep: p.obraCep,
+                    }}
+                  />
+                  {p.editadoEm && <div className="mt-1.5 text-center text-xs text-muted-foreground">Corrigido em {formatarData(p.editadoEm.slice(0, 10))} às {p.editadoEm.slice(11, 16)}</div>}
+                </div>
+              )}
               {p.motivoCancelamento && (
                 <Info icone={<AlertTriangleIcon />} rotulo="Motivo do cancelamento">
                   {p.motivoCancelamento}

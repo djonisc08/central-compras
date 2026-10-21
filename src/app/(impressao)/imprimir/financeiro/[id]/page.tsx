@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { getDb } from "@/db/client";
 import { listarFornecedores } from "@/server/dados/cadastros";
 import { obterEmpresa } from "@/server/dados/empresa";
-import { listarPedidos } from "@/server/dados/pedidos";
+import { listarPedidos, obterPedido } from "@/server/dados/pedidos";
 import { obterMapa } from "@/server/dados/requisicoes";
 import { formatarData, hojeISO, somarDias } from "@/lib/datas";
 import { formatarNumero, formatarReais } from "@/lib/dinheiro";
@@ -30,6 +30,10 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
   const pedidosReq = listarPedidos(db, { requisicaoId: r.id }).filter((p) => p.status !== "cancelado");
   const pedidoDe = (fornecedorId: number) => pedidosReq.find((p) => p.fornecedorId === fornecedorId);
   const cols = resumo.colunas;
+  // Faturamento corrigido nos pedidos (ex.: financeiro pediu outro CNPJ) vale sobre a ficha da obra.
+  const detalhes = pedidosReq.map((p) => obterPedido(db, p.id)).filter((p) => p != null);
+  const fat = detalhes[0] ?? null;
+  const faturamentos = new Set(detalhes.map((p) => `${p.obraRazaoSocial}|${p.obraCnpj}`));
   const totalAprovado = pedidosReq.length
     ? pedidosReq.reduce((s, p) => s + p.valorTotalCentavos, 0)
     : resumo.totalEscolhido;
@@ -55,12 +59,15 @@ export default async function ImprimirFinanceiroPage({ params }: PageProps<"/imp
       <section className="mb-3 grid grid-cols-[1.4fr_1fr] gap-4 text-[11.5px]">
         <div className="rounded border-2 border-[#0F4C5C]/70 p-2.5">
           <div className="text-[9.5px] font-semibold tracking-wide text-zinc-500 uppercase">Empresa / faturamento</div>
-          <div className="font-bold">{r.razaoSocialObra ?? empresa.razaoSocial}</div>
+          <div className="font-bold">{fat?.obraRazaoSocial ?? r.razaoSocialObra ?? empresa.razaoSocial}</div>
           <div>
-            CNPJ {formatarCnpj(r.cnpjObra ?? empresa.cnpj)}
-            {r.cnoObra && <> · CNO {r.cnoObra}</>}
+            CNPJ {formatarCnpj(fat?.obraCnpj ?? r.cnpjObra ?? empresa.cnpj)}
+            {(fat?.obraCno ?? r.cnoObra) && <> · CNO {fat?.obraCno ?? r.cnoObra}</>}
           </div>
-          <div className="text-zinc-600">{r.enderecoObra}</div>
+          <div className="text-zinc-600">{fat?.obraEndereco ?? r.enderecoObra}</div>
+          {faturamentos.size > 1 && (
+            <div className="mt-1 text-[10px] font-semibold text-[#B42318]">Atenção: os pedidos desta cotação têm faturamentos diferentes. Confira em cada pedido.</div>
+          )}
         </div>
         <div className="rounded border border-zinc-300 p-2.5">
           <div className="text-[9.5px] font-semibold tracking-wide text-zinc-500 uppercase">Departamento / obra</div>

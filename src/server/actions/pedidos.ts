@@ -8,10 +8,11 @@ import {
   avaliarFornecedor,
   cancelarPedido,
   emitirPedido,
+  editarPedido,
   fecharCotacao,
   registrarEntrega,
 } from "@/server/dados/pedidos";
-import type { AprovacaoInput, AvaliacaoInput, EmissaoInput, EntregaInput, GerarPedidosInput } from "@/lib/validacao";
+import type { AprovacaoInput, EdicaoPedidoInput, AvaliacaoInput, EmissaoInput, EntregaInput, GerarPedidosInput } from "@/lib/validacao";
 import { executar } from "./resultado";
 
 function comRefresh<T>(r: ReturnType<typeof executar<T>>) {
@@ -35,6 +36,10 @@ export async function aprovarPedidoAction(id: number, dados: AprovacaoInput, emi
 
 export async function emitirPedidoAction(id: number, dados: EmissaoInput) {
   return comRefresh(executar(() => emitirPedido(getDb(), id, dados)));
+}
+
+export async function editarPedidoAction(id: number, dados: EdicaoPedidoInput) {
+  return comRefresh(executar(() => editarPedido(getDb(), id, dados)));
 }
 
 export async function cancelarPedidoAction(id: number, motivo: string) {

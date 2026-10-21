@@ -250,6 +250,13 @@ export const pedidos = sqliteTable(
     formaPagamento: text("forma_pagamento", { enum: ["prazo", "avista"] }).notNull().default("prazo"),
     descontoBp: integer("desconto_bp").notNull().default(0),
     descontoNegociadoCentavos: integer("desconto_negociado_centavos").notNull().default(0),
+    /** Faturamento corrigido só neste pedido (ex.: financeiro pediu outro CNPJ). Vazio = ficha da obra. */
+    fatRazaoSocial: text("fat_razao_social"),
+    fatCnpj: text("fat_cnpj"),
+    fatCno: text("fat_cno"),
+    fatEndereco: text("fat_endereco"),
+    fatCep: text("fat_cep"),
+    editadoEm: text("editado_em"),
     prazoEntregaDias: integer("prazo_entrega_dias"),
     motivoCancelamento: text("motivo_cancelamento"),
     observacoes: text("observacoes"),

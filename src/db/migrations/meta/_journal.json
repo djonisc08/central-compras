@@ -43,6 +43,13 @@
       "when": 1792590949128,
       "tag": "0005_desconto_negociado",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792594247358,
+      "tag": "0006_pedido_faturamento_editavel",
+      "breakpoints": true
     }
   ]
 }

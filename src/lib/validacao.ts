@@ -172,6 +172,24 @@ export const emissaoSchema = z.object({
 });
 export type EmissaoInput = z.input<typeof emissaoSchema>;
 
+/** Correção dos dados do pedido depois de gerado (financeiro pediu outro CNPJ, prazo mudou etc.). */
+export const edicaoPedidoSchema = z.object({
+  condicaoPagamento: textoOpcional,
+  aprovadoPor: textoOpcional,
+  dataAprovacao: dataISO.nullable().optional(),
+  dataEmissao: dataISO.nullable().optional(),
+  prazoPrometido: dataISO.nullable().optional(),
+  observacoes: textoOpcional,
+  fatRazaoSocial: textoOpcional,
+  fatCnpj: textoOpcional
+    .transform((v) => (v ? somenteDigitos(v) : null))
+    .refine((v) => !v || cnpjValido(v), { message: "CNPJ de faturamento inválido" }),
+  fatCno: textoOpcional,
+  fatEndereco: textoOpcional,
+  fatCep: textoOpcional,
+});
+export type EdicaoPedidoInput = z.input<typeof edicaoPedidoSchema>;
+
 export const entregaSchema = z.object({
   dataReal: dataISO,
   parcial: z.boolean().default(false),

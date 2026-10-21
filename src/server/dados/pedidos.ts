@@ -18,6 +18,8 @@ import {
 import { hojeISO, somarDias } from "@/lib/datas";
 import {
   aprovacaoSchema,
+  edicaoPedidoSchema,
+  type EdicaoPedidoInput,
   avaliacaoSchema,
   emissaoSchema,
   entregaSchema,
@@ -262,11 +264,23 @@ export function obterPedido(db: DB, id: number) {
       fornecedorCidade: fornecedores.cidade,
       obraId: obras.id,
       obra: obras.nome,
-      obraEndereco: obras.endereco,
-      obraCep: obras.cep,
-      obraRazaoSocial: obras.razaoSocial,
-      obraCnpj: obras.cnpj,
-      obraCno: obras.cno,
+      // Faturamento corrigido no pedido tem prioridade sobre a ficha da obra.
+      obraEndereco: sql<string | null>`coalesce(${pedidos.fatEndereco}, ${obras.endereco})`,
+      obraCep: sql<string | null>`coalesce(${pedidos.fatCep}, ${obras.cep})`,
+      obraRazaoSocial: sql<string | null>`coalesce(${pedidos.fatRazaoSocial}, ${obras.razaoSocial})`,
+      obraCnpj: sql<string | null>`coalesce(${pedidos.fatCnpj}, ${obras.cnpj})`,
+      obraCno: sql<string | null>`coalesce(${pedidos.fatCno}, ${obras.cno})`,
+      fatRazaoSocial: pedidos.fatRazaoSocial,
+      fatCnpj: pedidos.fatCnpj,
+      fatCno: pedidos.fatCno,
+      fatEndereco: pedidos.fatEndereco,
+      fatCep: pedidos.fatCep,
+      fichaRazaoSocial: obras.razaoSocial,
+      fichaCnpj: obras.cnpj,
+      fichaCno: obras.cno,
+      fichaEndereco: obras.endereco,
+      fichaCep: obras.cep,
+      editadoEm: pedidos.editadoEm,
       solicitante: requisicoes.solicitante,
       dataRequisicao: requisicoes.dataPedido,
       dataNecessidade: requisicoes.dataNecessidade,
@@ -304,6 +318,36 @@ export function obterPedido(db: DB, id: number) {
 }
 
 export type PedidoDetalhe = NonNullable<ReturnType<typeof obterPedido>>;
+
+/**
+ * Corrige os dados do pedido (faturamento, prazo, pagamento, datas). Campo de faturamento igual à
+ * ficha da obra fica vazio, para seguir a ficha.
+ */
+export function editarPedido(db: DB, id: number, entrada: EdicaoPedidoInput) {
+  const d = edicaoPedidoSchema.parse(entrada);
+  const p = obterPedido(db, id);
+  if (!p) throw new Error("Pedido não encontrado");
+  if (p.status === "cancelado") throw new Error("Pedido cancelado não pode ser editado");
+  if (d.dataAprovacao && d.dataEmissao && d.dataEmissao < d.dataAprovacao) throw new Error("A emissão não pode ser antes da aprovação");
+  const igual = (v: string | null | undefined, ficha: string | null) => (v && v !== (ficha ?? "") ? v : null);
+  db.update(pedidos)
+    .set({
+      condicaoPagamento: d.condicaoPagamento ?? null,
+      aprovadoPor: d.aprovadoPor ?? p.aprovadoPor,
+      dataAprovacao: d.dataAprovacao ?? p.dataAprovacao,
+      dataEmissao: d.dataEmissao ?? p.dataEmissao,
+      prazoPrometido: d.prazoPrometido ?? p.prazoPrometido,
+      observacoes: d.observacoes ?? null,
+      fatRazaoSocial: igual(d.fatRazaoSocial, p.fichaRazaoSocial),
+      fatCnpj: igual(d.fatCnpj, p.fichaCnpj),
+      fatCno: igual(d.fatCno, p.fichaCno),
+      fatEndereco: igual(d.fatEndereco, p.fichaEndereco),
+      fatCep: igual(d.fatCep, p.fichaCep),
+      editadoEm: sql`(datetime('now', 'localtime'))`,
+    })
+    .where(eq(pedidos.id, id))
+    .run();
+}
 
 // ------------------------------------------------------------ transições
 

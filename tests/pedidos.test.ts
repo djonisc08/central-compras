@@ -7,6 +7,7 @@ import {
   aprovarEEmitir,
   aprovarPedido,
   cancelarPedido,
+  editarPedido,
   emitirPedido,
   gerarPedidos,
   obterPedido,
@@ -121,5 +122,21 @@ describe("fluxo de pedido", () => {
     for (const id of ids) cancelarPedido(db, id, "fornecedor sem estoque");
     expect(statusReq()).toBe("aguardando_aprovacao");
     expect(() => marcarMenoresPrecos(db, reqId)).not.toThrow();
+  });
+});
+
+describe("corrigir dados do pedido", () => {
+  it("troca o CNPJ só no pedido, sem mexer na ficha da obra", () => {
+    marcarMenoresPrecos(db, reqId);
+    const [id] = gerarPedidos(db, { requisicaoId: reqId });
+    aprovarEEmitir(db, id, { aprovadoPor: "Diretoria", dataAprovacao: "2026-10-21" });
+    editarPedido(db, id, { fatCnpj: "11.249.827/0001-50", fatRazaoSocial: "MAX INCORPORAÇÕES LTDA", prazoPrometido: "2026-10-25", condicaoPagamento: "28 dias" });
+    const p = obterPedido(db, id)!;
+    expect(p.obraCnpj).toBe("11249827000150");
+    expect(p.fichaCnpj).toBe("11249827000230");
+    expect(p.prazoPrometido).toBe("2026-10-25");
+    expect(p.condicaoPagamento).toBe("28 dias");
+    expect(p.editadoEm).toBeTruthy();
+    expect(() => editarPedido(db, id, { fatCnpj: "11.111.111/1111-11" })).toThrow(/CNPJ/);
   });
 });
