@@ -14,6 +14,7 @@ import { formatarData } from "../src/lib/datas";
 import { mensagemCotacao } from "../src/lib/mensagens";
 import { formatarWhatsapp, linkWhatsapp } from "../src/lib/normalizar";
 import { fornecedoresPorCategoria, listarFornecedores } from "../src/server/dados/cadastros";
+import { itensDoFornecedor } from "../src/server/dados/cotacao";
 import { obterEmpresa } from "../src/server/dados/empresa";
 import { listarPropostas, obterRequisicao } from "../src/server/dados/requisicoes";
 import { planilhaCotacaoFornecedor } from "../src/server/exportacoes";
@@ -45,13 +46,14 @@ rodar(async () => {
 
   console.log(`\nKit de cotação · requisição #${id} · ${r.obra}\n`);
   for (const f of fornecedores) {
+    const itensDele = itensDoFornecedor(r.itens, f.categoriaIds); // só o que ele vende
     const msg = mensagemCotacao({
       requisicaoId: id,
       obra: r.obra,
       enderecoObra: r.enderecoObra,
       dataNecessidade: r.dataNecessidade,
       urgente: r.urgente,
-      itens: r.itens,
+      itens: itensDele,
       empresa: empresa.nomeFantasia ?? empresa.razaoSocial,
       comprador: empresa.comprador,
       contato: f.contato,
@@ -61,7 +63,7 @@ rodar(async () => {
     const nomeXlsx = `cotacao-${id}-${f.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}.xlsx`;
     await wb!.xlsx.writeFile(path.join(pasta, nomeXlsx));
     const wa = linkWhatsapp(f.whatsapp, msg);
-    console.log(`── ${f.nome}${jaCotaram.has(f.id) ? "  (já cotou)" : ""}`);
+    console.log(`── ${f.nome}${jaCotaram.has(f.id) ? "  (já cotou)" : ""} · ${itensDele.length}/${r.itens.length} itens`);
     console.log(`   WhatsApp: ${f.whatsapp ? formatarWhatsapp(f.whatsapp) : "não cadastrado"}`);
     console.log(`   PDF:      ${URL_APP}/imprimir/cotacao/${id}?fornecedor=${f.id}`);
     console.log(`   Planilha: saida/cotacao-${id}/${nomeXlsx}`);

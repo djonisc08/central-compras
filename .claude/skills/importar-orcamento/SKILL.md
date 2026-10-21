@@ -64,5 +64,21 @@ Arquivo `.xlsx` gerado pelo sistema (tem a aba oculta `_central`):
 8. Mostre a tabela, os avisos e a conferência do total. Pergunte **"Posso gravar?"**. Após o OK, rode com `--confirmar`. O arquivo vai para `entrada/processados/`.
 9. **Fechar:** link do mapa (`/requisicoes/<id>/mapa`). Se todos os fornecedores já responderam, resuma quem está mais barato e quem chega a tempo.
 
+## Unidade diferente da requisição (ex.: Frigelar cota cobre em kg)
+
+O mapa compara **preço por unidade da requisição × quantidade pedida**. Quando o fornecedor cota em outra unidade
+(tubo de cobre pedido em **15 m** e cotado em **5,10 kg × R$ 135,47/kg**, rolo × metro, caixa × unidade):
+1. Use o **valor total da linha** do PDF e divida pela quantidade da requisição:
+   `"precoUnitario": total_da_linha / quantidade_requisitada` (em reais) → R$ 690,90 / 15 m = 46,06 por m.
+2. Registre a conversão em `marca`: `"Eluma · cotado 5,10 kg × R$ 135,47/kg"`, para quem olhar o mapa entender.
+3. Mostre a conversão na tabela de conferência e avise se a quantidade do fornecedor parece não cobrir a pedida.
+
+Itens que o fornecedor mandou a mais (não estão na requisição, ex.: tubo isolante, fita): liste à parte e pergunte se
+devem entrar — se sim, primeiro adicione o item à requisição pela tela "Editar / adicionar itens" e depois importe.
+Itens da requisição que ele não cotou: `"disponivel": false`.
+
+Frete: use o "Total do frete" do PDF em `"frete"`. "Faturado 30/60/90 dias" → `"condicaoPagamento"` igual ao texto.
+"Neste orçamento NÃO estão inclusos os impostos" → `"impostosInclusos": false`.
+
 ## Vários orçamentos de uma vez
 Processe um por vez, com uma prévia e uma confirmação cada. No fim, dê o resumo comparativo.

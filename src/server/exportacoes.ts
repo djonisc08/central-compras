@@ -1,6 +1,7 @@
 // Montagem das planilhas exportadas. Usado pelas rotas /api/exportar e pelos scripts.
 import type ExcelJS from "exceljs";
 import type { DB } from "@/db/client";
+import { itensParaFornecedor } from "@/server/dados/cotacao";
 import { formatarData, hojeISO } from "@/lib/datas";
 import { FORMULAS } from "@/lib/kpis";
 import type { Indicadores } from "./dados/indicadores";
@@ -267,6 +268,7 @@ export function planilhaMapa(db: DB, requisicaoId: number): ExcelJS.Workbook | n
 export async function planilhaCotacaoFornecedor(db: DB, requisicaoId: number, fornecedorId?: number | null) {
   const r = obterRequisicao(db, requisicaoId);
   if (!r) return null;
+  const itens = itensParaFornecedor(db, requisicaoId, fornecedorId ?? null);
   const empresa = obterEmpresa(db);
   const fornecedor = fornecedorId ? listarFornecedores(db).find((f) => f.id === fornecedorId) : undefined;
   const wb = novoWorkbook();
@@ -303,7 +305,7 @@ export async function planilhaCotacaoFornecedor(db: DB, requisicaoId: number, fo
   const cab = ws.getRow(L);
   ["#", "Descrição / especificação", "Qtd.", "Un.", "Marca / modelo", "Preço unit. (R$)", "Total (R$)"].forEach((t, i) => (cab.getCell(i + 1).value = t));
   estilizarCabecalho(cab);
-  r.itens.forEach((it, n) => {
+  itens.forEach((it, n) => {
     const row = ws.getRow(L + 1 + n);
     row.getCell(1).value = n + 1;
     row.getCell(2).value = it.especificacao ? `${it.material} — ${it.especificacao}` : it.material;
@@ -321,7 +323,7 @@ export async function planilhaCotacaoFornecedor(db: DB, requisicaoId: number, fo
     for (let c = 1; c <= 7; c++) row.getCell(c).border = borda;
     row.font = { size: 10 };
   });
-  const fimItens = L + r.itens.length;
+  const fimItens = L + itens.length;
   const tot = ws.getRow(fimItens + 1);
   tot.getCell(6).value = "Total itens";
   tot.getCell(6).font = { bold: true };

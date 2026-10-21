@@ -127,3 +127,19 @@ describe("formatos comuns", () => {
     expect(adivinharCategoria("parafuso sextavado 3/8")).toBe("Fixação");
   });
 });
+
+describe("pedido de refrigeração (salada mista)", () => {
+  const catalogo = [
+    { id: 1, nomePadronizado: "Cabo flexível 2,5mm² 750V rolo 100m", unidade: "rl", sinonimos: [], categoria: "Elétrica" },
+  ];
+  const r = interpretarPedido("Tubo cobre\n15m ⅝\n15 m ⅜\n10 PVC preta\n100 metros cabo pp azul 1,5", { obras: [], catalogo }, "2026-10-21");
+
+  it("lê fração unicode e herda o nome do título acima", () => {
+    expect(r.itens.slice(0, 2).map((i) => i.textoOriginal)).toEqual(["Tubo cobre 5/8", "Tubo cobre 3/8"]);
+    expect(r.itens[0].sugestaoNovo.categoria).toBe("Refrigeração");
+  });
+
+  it("não casa bitola diferente com o catálogo", () => {
+    expect(r.itens[3].situacao).not.toBe("catalogo");
+  });
+});

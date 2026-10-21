@@ -68,6 +68,7 @@ function lerUnidade(token: string): { unidade: string; fator: number } | null {
 // ------------------------------------------------------------ categorias
 
 const CATEGORIAS: [string, RegExp][] = [
+  ["Refrigeração", /\b(cobre|isolante|isolamento|esponjoso|armaflex|blindado|tectape|tape|split|evaporadora|condensadora|ar condicionado|r ?410a?|r ?32|gas refrigerante|fita pvc|pvc pret[ao]|dreno|suporte (de )?condensadora|flangeador)\b/],
   ["Louças e metais", /\b(vaso|bacia|cuba|torneira|chuveiro|louca|assento sanitario|mictorio|lavatorio)\b/],
   ["Blocos e tijolos", /\b(bloco|blocos|tijolo|tijolos|siporex|canaleta|celular)\b/],
   ["Elétrica", /\b(fio|fios|cabo|cabos|eletroduto|conduite|perfilado|eletrocalha|disjuntor|tomada|interruptor|quadro de distribuicao|lampada|luminaria|plafon|caixa 4x2)\b/],
@@ -126,6 +127,9 @@ function numerosDe(texto: string) {
   return (normalizarTexto(texto).match(/\d+(?:[.,/]\d+)?/g) ?? []).map((n) => n.replace(",", "."));
 }
 
+/** "⅝" → "5/8": a obra escreve bitola com o símbolo de fração. */
+const FRACOES: Record<string, string> = { "½": "1/2", "¼": "1/4", "¾": "3/4", "⅛": "1/8", "⅜": "3/8", "⅝": "5/8", "⅞": "7/8", "⅓": "1/3", "⅔": "2/3" };
+
 const DIAS_SEMANA: Record<string, number> = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
 
 function interpretarNecessidade(texto: string, dataPedido: string): { data: string; motivo: string; urgente: boolean } | null {
@@ -168,7 +172,10 @@ export function interpretarPedido(
   // 1. Remove o prefixo do WhatsApp e separa as linhas.
   const linhas: string[] = [];
   for (const bruta of textoBruto.replace(/\r/g, "").split("\n")) {
-    let l = bruta.replace(/[‎‏‪-‮]/g, "").trim();
+    let l = bruta
+      .replace(/[‎‏‪-‮]/g, "")
+      .replace(/\s*([½¼¾⅛⅜⅝⅞⅓⅔])/g, (_, f: string) => ` ${FRACOES[f]}`)
+      .trim();
     for (const re of PREFIXO_WHATS) {
       const m = l.match(re);
       if (m) {
@@ -269,6 +276,8 @@ export function interpretarPedido(
       descricao = /^(barra|caixa|rolo|lata|balde|kit|conjunto)$/i.test(tok[1]) ? descricao : tok[2].replace(/^(de|do|da)\s+/i, "");
     }
     descricao = descricao.replace(/\s+/g, " ").replace(/\s*-?\s*cada\s*$/i, "").trim();
+    // "Tubo cobre" numa linha e "15m 5/8" na de baixo: o nome vem do título acima.
+    if (!/\p{L}{3,}/u.test(descricao) && linhasIgnoradas.length) descricao = `${linhasIgnoradas.at(-1)} ${descricao}`.trim();
     if (!(qtd > 0)) continue;
 
     const candidatos = buscarMateriais(descricao, ctx.catalogo, 3);
@@ -278,7 +287,7 @@ export function interpretarPedido(
     if (melhor) {
       const numerosMsg = numerosDe(descricao);
       const cat = ctx.catalogo.find((c) => c.id === melhor.id)!;
-      const textoCat = normalizarTexto([cat.nomePadronizado, ...cat.sinonimos].join(" "));
+      const textoCat = normalizarTexto([cat.nomePadronizado, ...cat.sinonimos].join(" ")).replace(/(\d),(\d)/g, "$1.$2");
       const faltando = numerosMsg.filter((x) => !textoCat.includes(x));
       const unidadeOk = !unidadeInformada || unidadeInformada === melhor.unidade;
       if ((melhor.motivo !== "semelhanca" || melhor.pontuacao >= 0.6) && faltando.length === 0 && unidadeOk) situacao = "catalogo";

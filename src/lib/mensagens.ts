@@ -45,6 +45,15 @@ export function mensagemCotacao(d: DadosMensagemCotacao): string {
   ].join("\n");
 }
 
+/** Lembrete para o fornecedor que ainda não respondeu a cotação. */
+export function mensagemCobranca(d: { requisicaoId: number; obra: string; contato: string | null; urgente: boolean; qtdItens: number }) {
+  const nome = d.contato ? `, ${d.contato.split(" ")[0]}` : "";
+  return [
+    `Oi${nome}! Conseguiu ver a cotação nº ${d.requisicaoId} (${d.obra}, ${d.qtdItens} ${d.qtdItens === 1 ? "item" : "itens"})?`,
+    d.urgente ? "É *urgente* — se puder me mandar ainda hoje, mesmo que só dos itens que tiver, ajuda muito!" : "Se puder me mandar o orçamento, mesmo que só dos itens que tiver, agradeço!",
+  ].join("\n");
+}
+
 /** Mensagem de envio do pedido emitido ao fornecedor. */
 export function mensagemPedido(d: {
   numero: string;

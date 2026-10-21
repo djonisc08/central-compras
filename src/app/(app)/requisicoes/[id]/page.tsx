@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { CalendarIcon, ChevronLeftIcon, FileTextIcon, GridIcon, HardHatIcon, MapPinIcon, PencilIcon, PlusIcon, UserIcon } from "lucide-react";
 import { getDb } from "@/db/client";
-import { fornecedoresPorCategoria } from "@/server/dados/cadastros";
+import { listarCategorias } from "@/server/dados/cadastros";
+import { quadroCotacao } from "@/server/dados/cotacao";
 import { obterEmpresa } from "@/server/dados/empresa";
 import { obterMapa, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
 import { PageHeader } from "@/components/page-header";
@@ -16,10 +17,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Vazio } from "@/components/vazio";
 import { diasEntre, formatarData, hojeISO, prazoRelativo } from "@/lib/datas";
 import { formatarNumero, formatarReais } from "@/lib/dinheiro";
-import { mensagemCotacao } from "@/lib/mensagens";
+import { mensagemCobranca, mensagemCotacao } from "@/lib/mensagens";
 import { cn } from "@/lib/utils";
 import { AcoesRequisicao } from "./acoes-requisicao";
-import { PedirCotacao } from "./pedir-cotacao";
+import { CentralCotacao } from "./central-cotacao";
 import { PropostaAcoes } from "./proposta-acoes";
 
 export async function generateMetadata({ params }: PageProps<"/requisicoes/[id]">): Promise<Metadata> {
@@ -40,26 +41,27 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
   const editavel = ["aberta", "cotando", "aguardando_aprovacao"].includes(r.status);
   const itensEditaveis = editavel && !temPedidosAtivos(db, r.id);
 
-  const categoriaIds = [...new Set(r.itens.map((i) => i.categoriaId))];
-  const jaCotaram = new Set(mapa.propostas.map((p) => p.fornecedorId));
-  const sugeridos = fornecedoresPorCategoria(db, categoriaIds).map((f) => ({
-    id: f.id,
-    nome: f.nome,
-    contato: f.contato,
-    whatsapp: f.whatsapp,
-    jaCotou: jaCotaram.has(f.id),
-    mensagem: mensagemCotacao({
-      requisicaoId: r.id,
-      obra: r.obra,
-      enderecoObra: r.enderecoObra,
-      dataNecessidade: r.dataNecessidade,
-      urgente: r.urgente,
-      itens: r.itens,
-      empresa: empresa.nomeFantasia ?? empresa.razaoSocial,
-      comprador: empresa.comprador,
-      contato: f.contato,
-      faturamento: { razaoSocial: r.razaoSocialObra, cnpj: r.cnpjObra, cno: r.cnoObra, cep: r.cepObra },
-    }),
+  const quadro = quadroCotacao(db, r.id)!;
+  const dadosMensagem = {
+    requisicaoId: r.id,
+    obra: r.obra,
+    enderecoObra: r.enderecoObra,
+    dataNecessidade: r.dataNecessidade,
+    urgente: r.urgente,
+    empresa: empresa.nomeFantasia ?? empresa.razaoSocial,
+    comprador: empresa.comprador,
+    faturamento: { razaoSocial: r.razaoSocialObra, cnpj: r.cnpjObra, cno: r.cnoObra, cep: r.cepObra },
+  };
+  const lotes = quadro.lotes.map((l) => ({
+    categoriaId: l.categoriaId,
+    categoria: l.categoria,
+    itens: l.itens.map((i) => ({ id: i.id, materialId: i.materialId, material: i.material, quantidade: i.quantidade, unidade: i.unidade })),
+    fornecedores: l.fornecedores.map(({ itens, ...f }) => ({
+      ...f,
+      qtdItens: itens.length,
+      mensagem: mensagemCotacao({ ...dadosMensagem, itens, contato: f.contato }),
+      cobranca: mensagemCobranca({ requisicaoId: r.id, obra: r.obra, contato: f.contato, urgente: r.urgente, qtdItens: itens.length }),
+    })),
   }));
 
   const dNec = diasEntre(hoje, r.dataNecessidade);
@@ -186,6 +188,8 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
             </Table>
           </Card>
 
+          {editavel && <CentralCotacao requisicaoId={r.id} urgente={r.urgente} lotes={lotes} categorias={listarCategorias(db)} />}
+
           <Card>
             <CardHeader>
               <div>
@@ -215,7 +219,7 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
                 <Vazio
                   icone={<FileTextIcon />}
                   titulo="Nenhuma proposta ainda"
-                  descricao="Peça cotação aos fornecedores ao lado e lance as respostas aqui (ou use a skill importar-orcamento)."
+                  descricao="Peça cotação aos fornecedores no quadro acima e lance as respostas aqui (ou use a skill importar-orcamento)."
                   acao={
                     editavel && (
                       <Button asChild size="sm">
@@ -274,7 +278,6 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
         </div>
 
         <div className="grid min-w-0 content-start gap-4">
-          {editavel && <PedirCotacao requisicaoId={r.id} fornecedores={sugeridos} />}
           {r.origemTexto && (
             <Card>
               <CardHeader>

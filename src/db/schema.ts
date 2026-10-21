@@ -295,6 +295,24 @@ export const avaliacoesFornecedor = sqliteTable("avaliacoes_fornecedor", {
   criadoEm: criadoEm(),
 });
 
+/** Cada envio de pedido de cotação a um fornecedor (WhatsApp/PDF), para acompanhar quem respondeu. */
+export const cotacaoEnvios = sqliteTable(
+  "cotacao_envios",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    requisicaoId: integer("requisicao_id")
+      .notNull()
+      .references(() => requisicoes.id, { onDelete: "cascade" }),
+    fornecedorId: integer("fornecedor_id")
+      .notNull()
+      .references(() => fornecedores.id),
+    enviadoEm: text("enviado_em").notNull().default(sql`(datetime('now', 'localtime'))`),
+    cobradoEm: text("cobrado_em"),
+    qtdItens: integer("qtd_itens").notNull().default(0),
+  },
+  (t) => [uniqueIndex("cotacao_envios_req_forn_idx").on(t.requisicaoId, t.fornecedorId)],
+);
+
 export const configEmpresa = sqliteTable("config_empresa", {
   id: integer("id").primaryKey(),
   razaoSocial: text("razao_social").notNull(),
