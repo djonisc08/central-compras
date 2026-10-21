@@ -16,7 +16,22 @@ abrir = True
 For Each a In WScript.Arguments
   If LCase(a) = "/inicio" Then abrir = False
 Next
-If abrir Then sh.Run "http://localhost:3000"
+If abrir Then AbrirComoApp "http://localhost:3000"
+
+' Abre numa janela propria (sem abas nem barra de endereco), como um aplicativo.
+Sub AbrirComoApp(url)
+  On Error Resume Next
+  Err.Clear
+  sh.Run "chrome --app=" & url, 1, False
+  If Err.Number <> 0 Then
+    Err.Clear
+    sh.Run "msedge --app=" & url, 1, False
+  End If
+  If Err.Number <> 0 Then
+    Err.Clear
+    sh.Run url
+  End If
+End Sub
 
 Function Rodando()
   On Error Resume Next
