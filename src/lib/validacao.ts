@@ -80,6 +80,10 @@ export type RequisicaoInput = z.input<typeof requisicaoSchema>;
 export const propostaItemSchema = z.object({
   requisicaoItemId: z.number().int(),
   precoUnitarioCentavos: centavos,
+  /** Valor da linha exatamente como no orçamento (centavos). */
+  totalCentavos: z.number().int().min(0).nullable().optional(),
+  quantidadeCotada: z.number().positive().nullable().optional(),
+  unidadeCotada: textoOpcional,
   marca: textoOpcional,
   disponivel: z.boolean().default(true),
 });
@@ -97,11 +101,30 @@ export const propostaSchema = z.object({
   vendedor: textoOpcional,
   validade: dataISO.nullable().optional(),
   dataCotacao: dataISO,
+  /** Total impresso no orçamento; se informado, a soma das linhas + frete tem que bater centavo a centavo. */
+  totalDocumentoCentavos: z.number().int().min(0).nullable().optional(),
   arquivoOrigem: textoOpcional,
   observacoes: textoOpcional,
   itens: z.array(propostaItemSchema).min(1, "Informe o preço de pelo menos um item"),
 });
 export type PropostaInput = z.input<typeof propostaSchema>;
+
+/**
+ * Confere a proposta com o total do documento do fornecedor. Cada linha vale o total do orçamento
+ * (quando informado) ou preço × quantidade da requisição. Devolve a soma e a diferença em centavos.
+ */
+export function conferirTotalProposta(
+  itens: { quantidade: number; precoUnitarioCentavos: number; totalCentavos?: number | null; disponivel: boolean }[],
+  freteCentavos: number,
+  totalDocumentoCentavos?: number | null,
+) {
+  const produtos = itens
+    .filter((i) => i.disponivel)
+    .reduce((s, i) => s + (i.totalCentavos ?? Math.round(i.quantidade * i.precoUnitarioCentavos)), 0);
+  const soma = produtos + freteCentavos;
+  const diferenca = totalDocumentoCentavos != null ? totalDocumentoCentavos - soma : 0;
+  return { produtos, soma, diferenca, confere: diferenca === 0 };
+}
 
 export const empresaSchema = z.object({
   razaoSocial: z.string().trim().min(2, "Informe a razão social"),

@@ -34,7 +34,7 @@ export function atividadesNoPeriodo(db: DB, inicio: string, fim: string): Ativid
       'Orçamento · ' || f.nome,
       'Requisição #' || r.id || coalesce(' · ' || p.condicao_pagamento, ''),
       o.nome,
-      p.frete_centavos + coalesce((select sum(round(pi.preco_unitario_centavos * ri.quantidade)) from proposta_itens pi
+      p.frete_centavos + coalesce((select sum(coalesce(pi.total_centavos, round(pi.preco_unitario_centavos * ri.quantidade))) from proposta_itens pi
         join requisicao_itens ri on ri.id = pi.requisicao_item_id where pi.proposta_id = p.id and pi.disponivel = 1), 0),
       '/requisicoes/' || r.id || '/mapa', 0
     from propostas p join fornecedores f on f.id = p.fornecedor_id

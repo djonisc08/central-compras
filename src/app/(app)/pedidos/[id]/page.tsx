@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { diasEntre, formatarData, hojeISO } from "@/lib/datas";
-import { formatarNumero, formatarPercentual, formatarReais, totalItem } from "@/lib/dinheiro";
+import { formatarNumero, formatarPercentual, formatarReais } from "@/lib/dinheiro";
 import { mensagemPedido } from "@/lib/mensagens";
 import { formatarCnpj, linkWhatsapp } from "@/lib/normalizar";
 import { cn } from "@/lib/utils";
@@ -58,7 +58,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
         )
       : null;
 
-  const subtotal = p.itens.reduce((s, i) => s + totalItem(i.quantidade, i.precoUnitarioCentavos), 0);
+  const subtotal = p.itens.reduce((s, i) => s + i.totalCentavos, 0);
 
   return (
     <>
@@ -137,7 +137,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
                       {formatarNumero(i.quantidade)} <span className="text-muted-foreground">{i.unidade}</span>
                     </TableCell>
                     <TableCell className="tabular text-right">{formatarReais(i.precoUnitarioCentavos)}</TableCell>
-                    <TableCell className="tabular text-right font-medium">{formatarReais(totalItem(i.quantidade, i.precoUnitarioCentavos))}</TableCell>
+                    <TableCell className="tabular text-right font-medium">{formatarReais(i.totalCentavos)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

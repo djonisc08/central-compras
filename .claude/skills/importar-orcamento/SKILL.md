@@ -44,6 +44,13 @@ Arquivo `.xlsx` gerado pelo sistema (tem a aba oculta `_central`):
    - **Nº do orçamento ou pedido do fornecedor**, **vendedor ou representante**, **validade** (data; "5 dias" = data da cotação + 5).
    - **Item não atendido:** `"disponivel": false` (sem preço).
    - **Endereço de entrega ou faturamento errado** no orçamento (ex.: escritório no lugar da obra): coloque em `observacoes` e avise o usuário.
+   - **Valores exatos (obrigatório):** o valor vai para o financeiro e para a NF, então tem que bater **centavo a centavo**.
+     - `"totalDocumento"`: o total final impresso no orçamento ("Total da(s) OV(s)", "Valor total", "Total geral") — produtos + frete + IPI/ST.
+     - Em **cada linha**, `"total"` = o valor total da linha como está no PDF (ex.: 690,90). Se o PDF mostra mais casas (690,8970), use o
+       arredondado a 2 casas que fecha com o "Total dos produtos" do documento.
+     - PIS/COFINS/ICMS "inclusos" já estão no preço: não some. IPI e ST destacados à parte entram no total da linha (ou peça orientação).
+     - O script **recusa** a prévia se a soma das linhas + frete não for igual ao `totalDocumento`. Não "ajuste" preço para fechar: ache a
+       causa (item a mais no PDF que não está na requisição, frete, IPI, desconto) e explique ao usuário.
 6. **Rascunho** em `entrada/rascunhos/prop-<req>-<fornecedor>.json`:
 ```json
 {
@@ -61,9 +68,10 @@ Arquivo `.xlsx` gerado pelo sistema (tem a aba oculta `_central`):
   "validade": "2026-10-29",
   "observacoes": "Proposta veio com entrega no escritório: ajustar para a obra.",
   "arquivoOrigem": "entrada/Orcamento_Roca.pdf",
+  "totalDocumento": 58149.24,
   "itens": [
-    { "requisicaoItemId": 328, "precoUnitario": 453.77, "quantidadeCotada": 123, "marca": "Celite LIKE (BACIA C/CX 3/6L+CP INST LIKE BR)" },
-    { "requisicaoItemId": 329, "precoUnitario": 778.51, "quantidadeCotada": 3, "marca": "Celite ACESSO COMF" }
+    { "requisicaoItemId": 328, "precoUnitario": 453.77, "total": 55813.71, "quantidadeCotada": 123, "marca": "Celite LIKE (BACIA C/CX 3/6L+CP INST LIKE BR)" },
+    { "requisicaoItemId": 329, "precoUnitario": 778.51, "total": 2335.53, "quantidadeCotada": 3, "marca": "Celite ACESSO COMF" }
   ]
 }
 ```
@@ -75,9 +83,9 @@ Arquivo `.xlsx` gerado pelo sistema (tem a aba oculta `_central`):
 
 O mapa compara **preço por unidade da requisição × quantidade pedida**. Quando o fornecedor cota em outra unidade
 (tubo de cobre pedido em **15 m** e cotado em **5,10 kg × R$ 135,47/kg**, rolo × metro, caixa × unidade):
-1. Use o **valor total da linha** do PDF e divida pela quantidade da requisição:
-   `"precoUnitario": total_da_linha / quantidade_requisitada` (em reais) → R$ 690,90 / 15 m = 46,06 por m.
-2. Registre a conversão em `marca`: `"Eluma · cotado 5,10 kg × R$ 135,47/kg"`, para quem olhar o mapa entender.
+1. Informe `"total": 690.90` (valor da linha no PDF), `"quantidadeCotada": 5.1` e `"unidadeCotada": "kg"`. **Não** informe
+   `precoUnitario`: o sistema calcula a referência por metro (690,90 ÷ 15 = 46,06/m) e o valor que vale é o total exato.
+2. Registre a conversão em `marca`: `"Eluma · 5,10 kg × R$ 135,47/kg"` — sai no mapa e no pedido para o fornecedor.
 3. Mostre a conversão na tabela de conferência e avise se a quantidade do fornecedor parece não cobrir a pedida.
 
 Itens que o fornecedor mandou a mais (não estão na requisição, ex.: tubo isolante, fita): liste à parte e pergunte se

@@ -45,6 +45,8 @@ export type MapaPropostaEntrada = {
   itens: {
     requisicaoItemId: number;
     precoUnitarioCentavos: number;
+    /** Valor exato da linha como está no orçamento (centavos). Quando existe, manda sobre preço × quantidade. */
+    totalCentavos?: number | null;
     disponivel: boolean;
     vencedora: boolean;
     marca: string | null;
@@ -66,8 +68,13 @@ export type LinhaMapa = {
   celulas: Celula[];
   menorPreco: number | null;
   maiorPreco: number | null;
+  /** Menor e maior valor da linha (quantidade da requisição), base da comparação. */
+  menorTotal: number | null;
+  maiorTotal: number | null;
   qtdCotacoes: number;
   precoEscolhido: number | null;
+  /** Valor exato da linha do fornecedor escolhido. */
+  totalEscolhido: number | null;
   propostaEscolhidaId: number | null;
   /** Cost avoidance do item: (maior − escolhida) × quantidade. */
   economia: number;
@@ -110,46 +117,50 @@ export function calcularMapa(
   };
 
   const linhas: LinhaMapa[] = itens.map((item) => {
-    const precos = propostas
-      .map((p) => precoDe(p, item.id)?.precoUnitarioCentavos)
-      .filter((x): x is number => x != null);
-    const menor = precos.length ? Math.min(...precos) : null;
-    const maior = precos.length ? Math.max(...precos) : null;
+    const totalDe = (pi: MapaPropostaEntrada["itens"][number]) => pi.totalCentavos ?? totalItem(item.quantidade, pi.precoUnitarioCentavos);
+    const cotadas = propostas.map((p) => precoDe(p, item.id)).filter((x) => x != null);
+    const precos = cotadas.map((pi) => pi.precoUnitarioCentavos);
+    const totais = cotadas.map(totalDe);
+    const menor = totais.length ? Math.min(...totais) : null;
+    const maior = totais.length ? Math.max(...totais) : null;
 
     let precoEscolhido: number | null = null;
+    let totalEscolhido: number | null = null;
     let propostaEscolhidaId: number | null = null;
 
     const celulas: Celula[] = propostas.map((p) => {
       const pi = precoDe(p, item.id);
       const preco = pi?.precoUnitarioCentavos ?? null;
+      const total = pi ? totalDe(pi) : null;
       const vencedora = !!pi?.vencedora;
       if (vencedora && preco != null) {
         precoEscolhido = preco;
+        totalEscolhido = total;
         propostaEscolhidaId = p.id;
       }
       return {
         propostaId: p.id,
         preco,
-        total: preco != null ? totalItem(item.quantidade, preco) : null,
+        total,
         marca: pi?.marca ?? null,
-        ehMenor: preco != null && preco === menor && precos.length > 1,
-        ehMaior: preco != null && preco === maior && precos.length > 1 && maior !== menor,
+        ehMenor: total != null && total === menor && totais.length > 1,
+        ehMaior: total != null && total === maior && totais.length > 1 && maior !== menor,
         vencedora,
       };
     });
 
-    const economia =
-      precoEscolhido != null && maior != null && precos.length > 1
-        ? totalItem(item.quantidade, maior) - totalItem(item.quantidade, precoEscolhido)
-        : 0;
+    const economia = totalEscolhido != null && maior != null && totais.length > 1 ? maior - totalEscolhido : 0;
 
     return {
       item,
       celulas,
-      menorPreco: menor,
-      maiorPreco: maior,
-      qtdCotacoes: precos.length,
+      menorPreco: precos.length ? Math.min(...precos) : null,
+      maiorPreco: precos.length ? Math.max(...precos) : null,
+      menorTotal: menor,
+      maiorTotal: maior,
+      qtdCotacoes: totais.length,
       precoEscolhido,
+      totalEscolhido,
       propostaEscolhidaId,
       economia,
     };
@@ -202,12 +213,12 @@ export function calcularMapa(
   let somaMenores = 0;
   let completo = true;
   for (const l of linhas) {
-    if (l.menorPreco == null) {
+    if (l.menorTotal == null) {
       completo = false;
       continue;
     }
     // Em empate, prefere o fornecedor já envolvido para não somar outro frete.
-    const candidatas = l.celulas.filter((c) => c.preco === l.menorPreco);
+    const candidatas = l.celulas.filter((c) => c.total === l.menorTotal);
     const escolhida =
       candidatas.find((c) => envolvidas.has(c.propostaId)) ??
       candidatas.sort(

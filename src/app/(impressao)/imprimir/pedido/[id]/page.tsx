@@ -5,7 +5,7 @@ import { getDb } from "@/db/client";
 import { obterEmpresa } from "@/server/dados/empresa";
 import { obterPedido } from "@/server/dados/pedidos";
 import { formatarData } from "@/lib/datas";
-import { formatarNumero, formatarPercentual, formatarReais, totalItem } from "@/lib/dinheiro";
+import { formatarNumero, formatarPercentual, formatarReais } from "@/lib/dinheiro";
 import { formatarCnpj, formatarWhatsapp } from "@/lib/normalizar";
 import { Folha } from "../../../folha";
 
@@ -23,7 +23,7 @@ export default async function ImprimirPedidoPage({ params }: PageProps<"/imprimi
   if (!p) notFound();
   const empresa = obterEmpresa(db);
   const rascunho = !p.numero;
-  const subtotal = p.itens.reduce((s, i) => s + totalItem(i.quantidade, i.precoUnitarioCentavos), 0);
+  const subtotal = p.itens.reduce((s, i) => s + i.totalCentavos, 0);
   const th = "border border-zinc-300 bg-zinc-100 px-2 py-1.5 text-left font-semibold";
   const td = "border border-zinc-300 px-2 py-1.5";
 
@@ -89,7 +89,7 @@ export default async function ImprimirPedidoPage({ params }: PageProps<"/imprimi
               <td className={`${td} text-right`}>{formatarNumero(i.quantidade)}</td>
               <td className={td}>{i.unidade}</td>
               <td className={`${td} text-right`}>{formatarReais(i.precoUnitarioCentavos)}</td>
-              <td className={`${td} text-right`}>{formatarReais(totalItem(i.quantidade, i.precoUnitarioCentavos))}</td>
+              <td className={`${td} text-right`}>{formatarReais(i.totalCentavos)}</td>
             </tr>
           ))}
         </tbody>

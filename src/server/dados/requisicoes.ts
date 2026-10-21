@@ -11,8 +11,10 @@ import {
   requisicoes,
   type StatusRequisicao,
 } from "@/db/schema";
+import { formatarReais } from "@/lib/dinheiro";
 import { calcularMapa, type MapaItemEntrada, type MapaPropostaEntrada } from "@/lib/mapa";
 import {
+  conferirTotalProposta,
   propostaSchema,
   requisicaoSchema,
   type PropostaInput,
@@ -222,6 +224,7 @@ export function listarPropostas(db: DB, requisicaoId: number): MapaPropostaEntra
       vendedor: propostas.vendedor,
       validade: propostas.validade,
       dataCotacao: propostas.dataCotacao,
+      totalDocumentoCentavos: propostas.totalDocumentoCentavos,
     })
     .from(propostas)
     .innerJoin(fornecedores, eq(fornecedores.id, propostas.fornecedorId))
@@ -241,6 +244,9 @@ export function listarPropostas(db: DB, requisicaoId: number): MapaPropostaEntra
       .map((i) => ({
         requisicaoItemId: i.requisicaoItemId,
         precoUnitarioCentavos: i.precoUnitarioCentavos,
+        totalCentavos: i.totalCentavos,
+        quantidadeCotada: i.quantidadeCotada,
+        unidadeCotada: i.unidadeCotada,
         disponivel: i.disponivel,
         vencedora: i.vencedora,
         marca: i.marca,
@@ -287,6 +293,22 @@ export function salvarProposta(db: DB, entrada: PropostaInput) {
   for (const i of dados.itens)
     if (!idsDaRequisicao.has(i.requisicaoItemId))
       throw new Error(`Item ${i.requisicaoItemId} não pertence à requisição ${dados.requisicaoId}`);
+
+  // Centavo a centavo com o documento do fornecedor (é o valor que vai para o financeiro e para a NF).
+  if (dados.totalDocumentoCentavos != null) {
+    const qtd = new Map(
+      db.select({ id: requisicaoItens.id, q: requisicaoItens.quantidade }).from(requisicaoItens).where(eq(requisicaoItens.requisicaoId, dados.requisicaoId)).all().map((r) => [r.id, r.q]),
+    );
+    const c = conferirTotalProposta(
+      dados.itens.map((i) => ({ ...i, quantidade: qtd.get(i.requisicaoItemId) ?? 0 })),
+      dados.freteCentavos,
+      dados.totalDocumentoCentavos,
+    );
+    if (!c.confere)
+      throw new Error(
+        `O total não bate com o orçamento: documento ${formatarReais(dados.totalDocumentoCentavos)}, soma ${formatarReais(c.soma)} (diferença ${formatarReais(c.diferenca)}). Confira frete, impostos e o valor de cada linha.`,
+      );
+  }
 
   const id = db.transaction((tx) => {
     const { itens, ...cab } = dados;
@@ -388,8 +410,8 @@ export function marcarMenoresPrecos(db: DB, requisicaoId: number) {
   db.transaction((tx) => {
     for (const l of mapa.resumo.linhas) {
       tx.update(propostaItens).set({ vencedora: false }).where(eq(propostaItens.requisicaoItemId, l.item.id)).run();
-      if (l.menorPreco == null) continue;
-      const cands = l.celulas.filter((c) => c.preco === l.menorPreco);
+      if (l.menorTotal == null) continue;
+      const cands = l.celulas.filter((c) => c.total === l.menorTotal);
       const esc =
         cands.find((c) => marcadas.has(c.propostaId)) ??
         cands.sort((a, b) => (fretes.get(a.propostaId) ?? 0) - (fretes.get(b.propostaId) ?? 0))[0];

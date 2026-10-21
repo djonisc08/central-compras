@@ -190,6 +190,8 @@ export const propostas = sqliteTable(
     vendedor: text("vendedor"), // vendedor ou representante
     validade: text("validade"),
     dataCotacao: text("data_cotacao").notNull(),
+    /** Total impresso no orçamento (produtos + frete + impostos), para conferir centavo a centavo. */
+    totalDocumentoCentavos: integer("total_documento_centavos"),
     arquivoOrigem: text("arquivo_origem"),
     observacoes: text("observacoes"),
     criadoEm: criadoEm(),
@@ -208,6 +210,10 @@ export const propostaItens = sqliteTable(
       .notNull()
       .references(() => requisicaoItens.id, { onDelete: "cascade" }),
     precoUnitarioCentavos: integer("preco_unitario_centavos").notNull(),
+    /** Valor da linha exatamente como no orçamento (quando a unidade/quantidade dele difere da requisição). */
+    totalCentavos: integer("total_centavos"),
+    quantidadeCotada: real("quantidade_cotada"),
+    unidadeCotada: text("unidade_cotada"),
     marca: text("marca"),
     disponivel: integer("disponivel", { mode: "boolean" }).notNull().default(true),
     vencedora: integer("vencedora", { mode: "boolean" }).notNull().default(false),
@@ -265,6 +271,7 @@ export const pedidoItens = sqliteTable(
       .references(() => materiais.id),
     quantidade: real("quantidade").notNull(),
     precoUnitarioCentavos: integer("preco_unitario_centavos").notNull(),
+    totalCentavos: integer("total_centavos"),
   },
   (t) => [index("pedido_itens_material_idx").on(t.materialId)],
 );

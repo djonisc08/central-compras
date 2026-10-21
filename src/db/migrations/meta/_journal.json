@@ -29,6 +29,13 @@
       "when": 1792577443199,
       "tag": "0003_cotacao_envios_refrigeracao",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792586262113,
+      "tag": "0004_total_exato_orcamento",
+      "breakpoints": true
     }
   ]
 }

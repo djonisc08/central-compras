@@ -3,7 +3,6 @@
 import { sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import { diasEntre, fimDoMes, inicioDoMes, somarDias } from "@/lib/datas";
-import { totalItem } from "@/lib/dinheiro";
 import {
   calcularCostAvoidance,
   calcularLeadTime,
@@ -42,6 +41,8 @@ type LinhaItem = {
   categoria: string;
   quantidade: number;
   preco: number; // preço cotado do item
+  /** Valor exato da linha do pedido (como no orçamento). */
+  total: number;
   desconto_bp: number;
   requisicao_item_id: number | null;
   obra: string;
@@ -53,7 +54,8 @@ type LinhaItem = {
 function itensEmitidos(db: DB, ate: string) {
   return db.all<LinhaItem>(sql`
     select pi.pedido_id, p.data_emissao, pi.material_id, m.nome_padronizado as material, m.unidade, c.nome as categoria,
-           pi.quantidade, pi.preco_unitario_centavos as preco, p.desconto_bp, pi.requisicao_item_id,
+           pi.quantidade, pi.preco_unitario_centavos as preco,
+           coalesce(pi.total_centavos, round(pi.quantidade * pi.preco_unitario_centavos)) as total, p.desconto_bp, pi.requisicao_item_id,
            o.nome as obra, f.nome as fornecedor, f.id as fornecedor_id
     from pedido_itens pi
     join pedidos p on p.id = pi.pedido_id
@@ -69,6 +71,9 @@ function itensEmitidos(db: DB, ate: string) {
 
 const efetivo = (l: { preco: number; desconto_bp: number }) =>
   l.desconto_bp > 0 ? Math.round((l.preco * (10000 - l.desconto_bp)) / 10000) : l.preco;
+/** Valor gasto na linha: total exato do pedido com o desconto à vista. */
+const valorLinha = (l: { total: number; desconto_bp: number }) =>
+  l.desconto_bp > 0 ? Math.round((l.total * (10000 - l.desconto_bp)) / 10000) : l.total;
 
 export function calcularIndicadores(db: DB, periodo: Periodo) {
   const { inicio, fim } = periodo;
@@ -131,7 +136,7 @@ export function calcularIndicadores(db: DB, periodo: Periodo) {
   };
   const gastoPorObra = agrupar(pedidosPeriodo, (p) => p.obra, (p) => p.valor);
   const gastoPorFornecedor = agrupar(pedidosPeriodo, (p) => p.fornecedor, (p) => p.valor);
-  const gastoPorCategoria = agrupar(doPeriodo, (l) => l.categoria, (l) => totalItem(l.quantidade, efetivo(l)));
+  const gastoPorCategoria = agrupar(doPeriodo, (l) => l.categoria, (l) => valorLinha(l));
 
   // --------------------------------------------------- prazos e urgência
   const leadTimes = pedidosPeriodo.map((p) => calcularLeadTime(p.data_requisicao, p.data_emissao));
@@ -175,7 +180,7 @@ export function calcularIndicadores(db: DB, periodo: Periodo) {
     .sort((x, y) => (y.variacao ?? 0) - (x.variacao ?? 0));
 
   // ------------------------------------------------------------ curva ABC
-  const abc = curvaABC(agrupar(doPeriodo, (l) => l.material, (l) => totalItem(l.quantidade, efetivo(l))).map((g) => ({ material: g.nome, valor: g.total })));
+  const abc = curvaABC(agrupar(doPeriodo, (l) => l.material, (l) => valorLinha(l)).map((g) => ({ material: g.nome, valor: g.total })));
 
   // --------------------------------------------------------- fornecedores
   const notas = db.all<{ fornecedor_id: number; nota: number }>(sql`

@@ -16,7 +16,6 @@ import {
   type StatusPedido,
 } from "@/db/schema";
 import { hojeISO, somarDias } from "@/lib/datas";
-import { totalItem } from "@/lib/dinheiro";
 import {
   aprovacaoSchema,
   avaliacaoSchema,
@@ -60,6 +59,7 @@ export function previaPedidos(db: DB, requisicaoId: number) {
           unidade: l.item.unidade,
           quantidade: l.item.quantidade,
           precoUnitarioCentavos: l.precoEscolhido!,
+          totalCentavos: l.totalEscolhido!,
         })),
       totalPrazo: c.valorVencido + c.proposta.freteCentavos,
       totalAVista:
@@ -86,7 +86,7 @@ export function gerarPedidos(db: DB, entrada: GerarPedidosInput) {
       const desconto = forma === "avista" ? p.descontoAVistaBp : 0;
       const linhas = p.itens.map((i) => ({ ...i, preco: i.precoUnitarioCentavos }));
       const valorItens = aplicarDesconto(
-        linhas.reduce((s, l) => s + totalItem(l.quantidade, l.preco), 0),
+        linhas.reduce((s, l) => s + l.totalCentavos, 0),
         desconto,
       );
       const condicao = forma === "avista" ? (desconto ? `À vista (−${(desconto / 100).toLocaleString("pt-BR")}%)` : "À vista") : p.condicaoPagamento;
@@ -115,6 +115,7 @@ export function gerarPedidos(db: DB, entrada: GerarPedidosInput) {
             materialId: l.materialId,
             quantidade: l.quantidade,
             precoUnitarioCentavos: l.preco,
+            totalCentavos: l.totalCentavos,
           })),
         )
         .run();
@@ -283,6 +284,7 @@ export function obterPedido(db: DB, id: number) {
       unidade: materiais.unidade,
       quantidade: pedidoItens.quantidade,
       precoUnitarioCentavos: pedidoItens.precoUnitarioCentavos,
+      totalCentavos: sql<number>`coalesce(${pedidoItens.totalCentavos}, round(${pedidoItens.quantidade} * ${pedidoItens.precoUnitarioCentavos}))`,
       especificacao: sql<string | null>`(select ri.especificacao from requisicao_itens ri where ri.id = ${pedidoItens.requisicaoItemId})`,
       marca: sql<string | null>`(select pi2.marca from proposta_itens pi2 where pi2.proposta_id = ${p.propostaId ?? 0} and pi2.requisicao_item_id = ${pedidoItens.requisicaoItemId})`,
     })

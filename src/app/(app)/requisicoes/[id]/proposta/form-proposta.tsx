@@ -36,8 +36,25 @@ type PropostaExistente = {
   validade: string | null;
   dataCotacao: string;
   observacoes: string | null;
-  itens: { requisicaoItemId: number; precoUnitarioCentavos: number; marca: string | null; disponivel: boolean }[];
+  totalDocumentoCentavos?: number | null;
+  itens: {
+    requisicaoItemId: number;
+    precoUnitarioCentavos: number;
+    totalCentavos?: number | null;
+    quantidadeCotada?: number | null;
+    unidadeCotada?: string | null;
+    marca: string | null;
+    disponivel: boolean;
+  }[];
 } | null;
+
+/** Valor da linha: o total digitado (como no orçamento) ou preço × quantidade. */
+function valorLinha(quantidade: number, p: { preco: string; total: string }) {
+  const t = textoParaCentavos(p.total);
+  if (t != null) return t;
+  const c = textoParaCentavos(p.preco);
+  return c != null ? totalItem(quantidade, c) : null;
+}
 
 const CONDICOES = ["À vista", "15 dias", "28 dias", "30 dias", "28/56 dias", "30/60 dias", "30/60/90 dias"];
 
@@ -61,11 +78,22 @@ export function FormProposta({
   const [condicao, setCondicao] = useState(proposta?.condicaoPagamento ?? "");
   const [desconto, setDesconto] = useState(proposta?.descontoAVistaBp ? String(proposta.descontoAVistaBp / 100).replace(".", ",") : "");
   const [impostosInclusos, setImpostosInclusos] = useState(proposta?.impostosInclusos ?? true);
-  const [precos, setPrecos] = useState<Record<number, { preco: string; marca: string; disponivel: boolean }>>(() =>
+  const [totalDocumento, setTotalDocumento] = useState(
+    proposta?.totalDocumentoCentavos != null ? centavosParaTextoInput(proposta.totalDocumentoCentavos) : "",
+  );
+  const [precos, setPrecos] = useState<Record<number, { preco: string; total: string; marca: string; disponivel: boolean }>>(() =>
     Object.fromEntries(
       requisicao.itens.map((i) => {
         const pi = proposta?.itens.find((x) => x.requisicaoItemId === i.id);
-        return [i.id, { preco: pi ? centavosParaTextoInput(pi.precoUnitarioCentavos) : "", marca: pi?.marca ?? "", disponivel: pi?.disponivel ?? true }];
+        return [
+          i.id,
+          {
+            preco: pi ? centavosParaTextoInput(pi.precoUnitarioCentavos) : "",
+            total: pi?.totalCentavos != null ? centavosParaTextoInput(pi.totalCentavos) : "",
+            marca: pi?.marca ?? "",
+            disponivel: pi?.disponivel ?? true,
+          },
+        ];
       }),
     ),
   );
@@ -75,27 +103,39 @@ export function FormProposta({
     let cotados = 0;
     for (const i of requisicao.itens) {
       const p = precos[i.id];
-      const c = p.disponivel ? textoParaCentavos(p.preco) : null;
-      if (c != null) {
-        subtotal += totalItem(i.quantidade, c);
+      const v = p.disponivel ? valorLinha(i.quantidade, p) : null;
+      if (v != null) {
+        subtotal += v;
         cotados += 1;
       }
     }
     const f = textoParaCentavos(frete) ?? 0;
     const bp = descontoParaBp(desconto);
     const totalAVista = bp > 0 ? Math.round((subtotal * (10000 - bp)) / 10000) + f : null;
-    return { subtotal, frete: f, total: subtotal + f, totalAVista, cotados };
-  }, [precos, frete, desconto, requisicao.itens]);
+    const doc = textoParaCentavos(totalDocumento);
+    return { subtotal, frete: f, total: subtotal + f, totalAVista, cotados, doc, diferenca: doc != null ? doc - (subtotal + f) : null };
+  }, [precos, frete, desconto, totalDocumento, requisicao.itens]);
 
   function enviar(form: FormData) {
     if (!fornecedorId) return void toast.error("Escolha o fornecedor");
     const itens = requisicao.itens
       .map((i) => {
         const p = precos[i.id];
-        const c = textoParaCentavos(p.preco);
+        const t = textoParaCentavos(p.total);
+        const c = textoParaCentavos(p.preco) ?? (t != null ? Math.round(t / i.quantidade) : null);
         if (!p.disponivel) return { requisicaoItemId: i.id, precoUnitarioCentavos: c ?? 0, marca: p.marca, disponivel: false };
         if (c == null) return null;
-        return { requisicaoItemId: i.id, precoUnitarioCentavos: c, marca: p.marca, disponivel: true };
+        const original = proposta?.itens.find((x) => x.requisicaoItemId === i.id);
+        return {
+          requisicaoItemId: i.id,
+          precoUnitarioCentavos: c,
+          totalCentavos: t,
+          // Mantém como veio no orçamento (ex.: 5,10 kg) enquanto o total da linha não mudar.
+          quantidadeCotada: t != null && t === original?.totalCentavos ? original.quantidadeCotada : null,
+          unidadeCotada: t != null && t === original?.totalCentavos ? original.unidadeCotada : null,
+          marca: p.marca,
+          disponivel: true,
+        };
       })
       .filter((x) => x !== null);
     const prazo = String(form.get("prazo") ?? "").trim();
@@ -104,6 +144,7 @@ export function FormProposta({
         requisicaoId: requisicao.id,
         fornecedorId,
         freteCentavos: textoParaCentavos(frete) ?? 0,
+        totalDocumentoCentavos: textoParaCentavos(totalDocumento),
         condicaoPagamento: condicao,
         descontoAVistaBp: descontoParaBp(desconto),
         prazoEntregaDias: prazo === "" ? null : Number(prazo),
@@ -161,6 +202,16 @@ export function FormProposta({
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <Campo rotulo="Data da cotação" htmlFor="dataCotacao">
               <Input id="dataCotacao" name="dataCotacao" type="date" defaultValue={proposta?.dataCotacao ?? hoje} required />
+            </Campo>
+            <Campo rotulo="Total do orçamento (R$)" htmlFor="totalDocumento" dica="O total impresso no PDF. O sistema confere centavo a centavo.">
+              <Input
+                id="totalDocumento"
+                inputMode="decimal"
+                value={totalDocumento}
+                onChange={(e) => setTotalDocumento(e.target.value)}
+                className="tabular text-right"
+                placeholder="0,00"
+              />
             </Campo>
             <Campo rotulo="Frete (R$)" htmlFor="frete">
               <Input id="frete" inputMode="decimal" value={frete} onChange={(e) => setFrete(e.target.value)} className="tabular text-right" placeholder="0,00" />
@@ -255,7 +306,16 @@ export function FormProposta({
                   />
                 </div>
                 <div className="tabular text-right text-[13px]">
-                  <div className="font-medium">{c != null && p.disponivel ? formatarReais(totalItem(i.quantidade, c)) : "—"}</div>
+                  <Input
+                    aria-label={`Total da linha de ${i.material} (como no orçamento)`}
+                    title="Total da linha como está no orçamento. Use quando o fornecedor cotou em outra unidade (kg, peça, rolo)."
+                    inputMode="decimal"
+                    value={p.total}
+                    disabled={!p.disponivel}
+                    onChange={(e) => set({ total: e.target.value })}
+                    placeholder={c != null && p.disponivel ? centavosParaTextoInput(totalItem(i.quantidade, c)) : "total"}
+                    className={cn("tabular h-8 text-right text-[13px]", p.total && "border-primary/60 font-medium")}
+                  />
                   {variacao != null && Math.abs(variacao) >= 0.005 && (
                     <div className={cn("text-[11px] font-medium", variacao > 0 ? "text-st-urgente" : "text-st-ok")}>
                       {variacao > 0 ? "▲" : "▼"} {Math.abs(variacao * 100).toFixed(1).replace(".", ",")}% vs último
@@ -273,6 +333,18 @@ export function FormProposta({
         <div className="grid gap-1 border-t bg-muted/40 px-5 py-3 text-[13px]">
           <Linha rotulo="Subtotal" valor={formatarReais(totais.subtotal)} />
           <Linha rotulo="Frete" valor={formatarReais(totais.frete)} />
+          {totais.diferenca != null && (
+            <div
+              className={cn(
+                "rounded-md px-2 py-1 text-xs font-medium",
+                totais.diferenca === 0 ? "bg-st-ok-bg text-st-ok" : "bg-st-urgente-bg text-st-urgente",
+              )}
+            >
+              {totais.diferenca === 0
+                ? `✓ Confere centavo a centavo com o orçamento (${formatarReais(totais.doc!)})`
+                : `Não bate com o orçamento (${formatarReais(totais.doc!)}): diferença de ${formatarReais(totais.diferenca)}. Confira frete e o total de cada linha.`}
+            </div>
+          )}
           <Linha rotulo="Total" valor={formatarReais(totais.total)} forte />
           {totais.totalAVista != null && <Linha rotulo="À vista (desconto sobre itens)" valor={formatarReais(totais.totalAVista)} />}
         </div>

@@ -38,7 +38,7 @@ export function acompanhamentoCotacao(db: DB, requisicaoId: number) {
       .all<{ fornecedor_id: number; criado_em: string; cotados: number; total: number }>(sql`
         select p.fornecedor_id, p.criado_em,
           (select count(*) from proposta_itens pi where pi.proposta_id = p.id and pi.disponivel = 1) cotados,
-          p.frete_centavos + coalesce((select sum(round(pi.preco_unitario_centavos * ri.quantidade)) from proposta_itens pi
+          p.frete_centavos + coalesce((select sum(coalesce(pi.total_centavos, round(pi.preco_unitario_centavos * ri.quantidade))) from proposta_itens pi
             join requisicao_itens ri on ri.id = pi.requisicao_item_id where pi.proposta_id = p.id and pi.disponivel = 1), 0) total
         from propostas p where p.requisicao_id = ${requisicaoId}`)
       .map((p) => [p.fornecedor_id, p]),

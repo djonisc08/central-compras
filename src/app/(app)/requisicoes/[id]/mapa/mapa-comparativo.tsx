@@ -77,7 +77,7 @@ export function MapaComparativo({
   function menoresPrecos() {
     const otimista: Escolhas = {};
     for (const l of resumo.linhas) {
-      const c = l.celulas.find((x) => x.preco === l.menorPreco && x.preco != null);
+      const c = l.celulas.find((x) => x.total === l.menorTotal && x.total != null);
       otimista[l.item.id] = c?.propostaId ?? null;
     }
     rodar(otimista, () => marcarMenoresPrecosAction(requisicaoId));

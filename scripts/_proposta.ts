@@ -5,7 +5,7 @@ import { propostas } from "../src/db/schema";
 import { formatarData, hojeISO } from "../src/lib/datas";
 import { totalItem } from "../src/lib/dinheiro";
 import { normalizarTexto } from "../src/lib/normalizar";
-import type { PropostaInput } from "../src/lib/validacao";
+import { conferirTotalProposta, type PropostaInput } from "../src/lib/validacao";
 import { listarCategorias, listarFornecedores } from "../src/server/dados/cadastros";
 import { obterRequisicao, ultimosPrecosPagos } from "../src/server/dados/requisicoes";
 import { paraCentavos, reais } from "./_comum";
@@ -26,10 +26,16 @@ export type RascunhoProposta = {
   validade?: string | null;
   observacoes?: string;
   arquivoOrigem?: string;
+  /** Total impresso no orçamento (produtos + frete + impostos). Com ele, a gravação confere centavo a centavo. */
+  totalDocumento?: number | string;
+  totalDocumentoCentavos?: number;
   itens: {
     requisicaoItemId: number;
     precoUnitario?: number | string;
     precoUnitarioCentavos?: number;
+    /** Valor total da linha exatamente como no orçamento (reais). Obrigatório quando a unidade/quantidade difere. */
+    total?: number | string;
+    totalCentavos?: number;
     marca?: string;
     disponivel?: boolean;
     quantidadeCotada?: number;
@@ -88,21 +94,38 @@ export function prepararProposta(db: DB, r: RascunhoProposta) {
     if (!it) throw new Error(`Item ${n + 1}: requisicaoItemId ${i.requisicaoItemId} não pertence à requisição #${req.id}. Ids válidos: ${req.itens.map((x) => `${x.id}=${x.material}`).join("; ")}`);
     vistos.add(it.id);
     const disponivel = i.disponivel ?? true;
-    const preco = i.precoUnitarioCentavos ?? paraCentavos(i.precoUnitario);
+    const totalLinha = i.totalCentavos ?? paraCentavos(i.total);
+    // Com o total da linha, o unitário na unidade da requisição é só referência (total ÷ quantidade pedida).
+    const preco = i.precoUnitarioCentavos ?? paraCentavos(i.precoUnitario) ?? (totalLinha != null ? Math.round(totalLinha / it.quantidade) : null);
     if (disponivel && (preco == null || preco <= 0)) throw new Error(`Item ${n + 1} (${it.material}): preço unitário inválido`);
-    if (i.quantidadeCotada != null && Math.abs(i.quantidadeCotada - it.quantidade) > 1e-9)
+    const difereQtd = i.quantidadeCotada != null && Math.abs(i.quantidadeCotada - it.quantidade) > 1e-9;
+    const difereUn = !!i.unidadeCotada && normalizarTexto(i.unidadeCotada) !== normalizarTexto(it.unidade);
+    if (disponivel && (difereQtd || difereUn)) {
+      if (totalLinha == null)
+        throw new Error(
+          `Item ${n + 1} (${it.material}): cotado em ${i.quantidadeCotada?.toLocaleString("pt-BR") ?? "?"} ${i.unidadeCotada ?? it.unidade}, pedido ${it.quantidade.toLocaleString("pt-BR")} ${it.unidade}. Informe "total" da linha como está no orçamento.`,
+        );
       avisos.push(
-        `${it.material}: fornecedor cotou ${i.quantidadeCotada.toLocaleString("pt-BR")} ${i.unidadeCotada ?? it.unidade}, pedido é ${it.quantidade.toLocaleString("pt-BR")}. ` +
-          `O mapa usa a quantidade da requisição (total do orçamento dele difere em ${reais(Math.abs(totalItem(i.quantidadeCotada - it.quantidade, preco ?? 0)))}).`,
+        `${it.material}: cotado ${i.quantidadeCotada?.toLocaleString("pt-BR") ?? ""} ${i.unidadeCotada ?? ""} — vale o total do orçamento ${reais(totalLinha)} (≈ ${reais(preco)}/${it.unidade}).`,
       );
-    if (i.unidadeCotada && normalizarTexto(i.unidadeCotada) !== normalizarTexto(it.unidade))
-      avisos.push(`${it.material}: unidade cotada "${i.unidadeCotada}" ≠ "${it.unidade}". Converta o preço para ${it.unidade} antes de gravar.`);
+    }
     const ult = ultimos.get(it.materialId)?.preco;
     if (disponivel && preco && ult) {
       const v = preco / ult - 1;
       if (Math.abs(v) >= 0.15) avisos.push(`${it.material}: preço ${v > 0 ? "+" : ""}${(v * 100).toFixed(0)}% vs último pago (${reais(ult)}). Confira a unidade/embalagem.`);
     }
-    return { it, preco: preco ?? 0, disponivel, marca: i.marca ?? i.descricaoOriginal ?? null, ultimo: ult ?? null };
+    const total = disponivel ? (totalLinha ?? totalItem(it.quantidade, preco ?? 0)) : 0;
+    return {
+      it,
+      preco: preco ?? 0,
+      total,
+      totalCentavos: totalLinha,
+      quantidadeCotada: i.quantidadeCotada ?? null,
+      unidadeCotada: i.unidadeCotada ?? null,
+      disponivel,
+      marca: i.marca ?? i.descricaoOriginal ?? null,
+      ultimo: ult ?? null,
+    };
   });
   const faltando = req.itens.filter((i) => !vistos.has(i.id));
   if (faltando.length) avisos.push(`Não cotou: ${faltando.map((i) => i.material).join(", ")}.`);
@@ -114,7 +137,20 @@ export function prepararProposta(db: DB, r: RascunhoProposta) {
   if (r.validade && r.validade < hoje) avisos.push(`Validade da proposta (${formatarData(r.validade)}) já venceu.`);
   if (r.prazoEntregaDias == null) avisos.push("Prazo de entrega não informado.");
 
-  const subtotal = linhas.filter((l) => l.disponivel).reduce((s, l) => s + totalItem(l.it.quantidade, l.preco), 0);
+  const subtotal = linhas.reduce((s, l) => s + l.total, 0);
+  const totalDocumentoCentavos = r.totalDocumentoCentavos ?? paraCentavos(r.totalDocumento) ?? null;
+  const conferencia = conferirTotalProposta(
+    linhas.map((l) => ({ quantidade: l.it.quantidade, precoUnitarioCentavos: l.preco, totalCentavos: l.total, disponivel: l.disponivel })),
+    freteCentavos,
+    totalDocumentoCentavos,
+  );
+  if (totalDocumentoCentavos == null)
+    avisos.push('Total do documento não informado ("totalDocumento"): não deu para conferir centavo a centavo com o orçamento.');
+  else if (!conferencia.confere)
+    throw new Error(
+      `NÃO BATE com o orçamento: documento ${reais(totalDocumentoCentavos)} × soma ${reais(conferencia.soma)} (itens ${reais(subtotal)} + frete ${reais(freteCentavos)}), diferença ${reais(conferencia.diferenca)}. ` +
+        "Use o valor total de cada linha do PDF, confira frete, IPI/ST e itens que não estão na requisição.",
+    );
   const entrada: Omit<PropostaInput, "fornecedorId"> = {
     requisicaoId: req.id,
     freteCentavos,
@@ -129,9 +165,18 @@ export function prepararProposta(db: DB, r: RascunhoProposta) {
     dataCotacao: r.dataCotacao ?? hoje,
     arquivoOrigem: r.arquivoOrigem ?? null,
     observacoes: r.observacoes ?? null,
-    itens: linhas.map((l) => ({ requisicaoItemId: l.it.id, precoUnitarioCentavos: l.preco, marca: l.marca, disponivel: l.disponivel })),
+    totalDocumentoCentavos,
+    itens: linhas.map((l) => ({
+      requisicaoItemId: l.it.id,
+      precoUnitarioCentavos: l.preco,
+      totalCentavos: l.totalCentavos,
+      quantidadeCotada: l.quantidadeCotada,
+      unidadeCotada: l.unidadeCotada,
+      marca: l.marca,
+      disponivel: l.disponivel,
+    })),
   };
-  return { req, fornecedorId, fornecedorNome, novoFornecedor, entrada, linhas, subtotal, freteCentavos, descontoAVistaBp, avisos };
+  return { req, fornecedorId, fornecedorNome, novoFornecedor, entrada, linhas, subtotal, freteCentavos, descontoAVistaBp, totalDocumentoCentavos, avisos };
 }
 
 export type PropostaPreparada = ReturnType<typeof prepararProposta>;

@@ -9,7 +9,6 @@
  */
 import { getDb } from "../src/db/client";
 import { formatarData, hojeISO } from "../src/lib/datas";
-import { totalItem } from "../src/lib/dinheiro";
 import { salvarFornecedor } from "../src/server/dados/cadastros";
 import { salvarProposta } from "../src/server/dados/requisicoes";
 import { argumentos, avisar, falhar, lerJson, moverParaProcessados, reais, rodapePrevia, rodar, tabela, URL_APP } from "./_comum";
@@ -39,13 +38,14 @@ export function imprimirPrevia(p: PropostaPreparada) {
       l.it.quantidade.toLocaleString("pt-BR"),
       l.it.unidade,
       l.disponivel ? reais(l.preco) : "não tem",
-      l.disponivel ? reais(totalItem(l.it.quantidade, l.preco)) : "",
+      l.disponivel ? reais(l.total) : "",
       reais(l.ultimo),
       l.marca ?? "",
     ]),
   );
   const total = p.subtotal + p.freteCentavos;
   console.log(`\nItens ${reais(p.subtotal)} + frete ${p.freteCentavos ? reais(p.freteCentavos) : "CIF"} = ${reais(total)}`);
+  if (p.totalDocumentoCentavos != null) console.log(`✓ Confere centavo a centavo com o orçamento (${reais(p.totalDocumentoCentavos)})`);
   if (p.descontoAVistaBp) console.log(`À vista: ${reais(Math.round((p.subtotal * (10000 - p.descontoAVistaBp)) / 10000) + p.freteCentavos)}`);
   avisar(p.avisos);
 }
