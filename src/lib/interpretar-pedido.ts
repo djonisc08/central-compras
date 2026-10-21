@@ -68,6 +68,7 @@ function lerUnidade(token: string): { unidade: string; fator: number } | null {
 // ------------------------------------------------------------ categorias
 
 const CATEGORIAS: [string, RegExp][] = [
+  ["Produtos de limpeza", /\b(detergente|desinfetante|agua sanitaria|cloro|sabao|sabonete|alcool (em gel|70)|limpa ?vidro|multiuso|desengordurante|vassoura|rodo|pano de chao|flanela|esponja|balde|saco de lixo|sacos de lixo|papel higienico|papel toalha|limpa porcelanato|acido muriatico|removedor|lustra moveis|cera)\b/],
   ["Refrigeração", /\b(cobre|isolante|isolamento|esponjoso|armaflex|blindado|tectape|tape|split|evaporadora|condensadora|ar condicionado|r ?410a?|r ?32|gas refrigerante|fita pvc|pvc pret[ao]|dreno|suporte (de )?condensadora|flangeador)\b/],
   ["Louças e metais", /\b(vaso|bacia|cuba|torneira|chuveiro|louca|assento sanitario|mictorio|lavatorio)\b/],
   ["Blocos e tijolos", /\b(bloco|blocos|tijolo|tijolos|siporex|canaleta|celular)\b/],

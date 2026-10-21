@@ -50,6 +50,13 @@
       "when": 1792594247358,
       "tag": "0006_pedido_faturamento_editavel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792617523811,
+      "tag": "0007_categoria_limpeza",
+      "breakpoints": true
     }
   ]
 }
