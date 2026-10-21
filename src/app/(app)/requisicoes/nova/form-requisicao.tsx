@@ -214,7 +214,11 @@ export function FormRequisicao({
         return;
       }
       const r = await criarRequisicaoCompletaAction(dados);
-      if (!r.ok) return void toast.error(r.erro);
+      if (!r.ok) {
+        toast.error(r.erro);
+        router.refresh(); // recarrega o catálogo, caso algo tenha mudado
+        return;
+      }
       const extra = r.dados.novos.length ? ` · ${r.dados.novos.length} materiais novos no catálogo` : "";
       toast.success(`Requisição #${r.dados.id} criada${extra}`);
       for (const a of r.dados.avisos.filter((a) => a.includes("Categoria NOVA"))) toast.info(a);

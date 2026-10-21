@@ -99,3 +99,31 @@ describe("fechar cotação com itens sem fornecedor", () => {
     expect(saldo.observacoes).toMatch(/Saldo da requisição/);
   });
 });
+
+describe("material novo que já existe no catálogo", () => {
+  it("usa o cadastro existente em vez de travar", async () => {
+    const { gravarRequisicao } = await import("@/server/dados/requisicao-completa");
+    const p = prepararRequisicao(db, {
+      ...base,
+      obra,
+      itens: [{ novoMaterial: { nome: "cimento cpii 50kg", unidade: "sc", categoria: "Básicos" }, quantidade: 3, textoOriginal: "3 saco cimento" }],
+    });
+    expect(p.avisos.join(" ")).toMatch(/já estava no catálogo/);
+    const r = gravarRequisicao(db, p);
+    expect(r.novos).toHaveLength(0);
+    expect(obterRequisicao(db, r.id)!.itens[0].material).toBe("Cimento CPII 50kg");
+  });
+
+  it("se a requisição falhar, o material novo não fica no catálogo", async () => {
+    const { gravarRequisicao } = await import("@/server/dados/requisicao-completa");
+    const { listarMateriais } = await import("@/server/dados/cadastros");
+    const p = prepararRequisicao(db, {
+      ...base,
+      obra,
+      itens: [{ novoMaterial: { nome: "Fio flexível 1,5mm azul", unidade: "rl", categoria: "Básicos" }, quantidade: 1 }],
+    });
+    p.entrada.solicitante = ""; // força erro na gravação da requisição
+    expect(() => gravarRequisicao(db, p)).toThrow();
+    expect(listarMateriais(db).some((m) => m.nomePadronizado === "Fio flexível 1,5mm azul")).toBe(false);
+  });
+});

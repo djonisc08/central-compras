@@ -2,7 +2,7 @@
 // Valida tudo antes, cadastra os materiais novos (com o texto da obra como sinônimo) e grava.
 import { eq } from "drizzle-orm";
 import type { DB } from "@/db/client";
-import { obras, requisicaoItens, requisicoes } from "@/db/schema";
+import { materiais, obras, requisicaoItens, requisicoes } from "@/db/schema";
 import { diasEntre, hojeISO } from "@/lib/datas";
 import { requisicaoSchema } from "@/lib/validacao";
 import { buscarMateriais, normalizarTexto } from "@/lib/normalizar";
@@ -88,7 +88,21 @@ export function prepararRequisicao(db: DB, r: RequisicaoCompletaEntrada) {
         throw new Error(`Item ${n}: categoria "${nm.categoria}" não existe. Use uma de: ${categorias.map((c) => c.nome).join(", ")}`);
       if (!existente) avisos.push(`Categoria NOVA será criada: "${nm.categoria}". Marque os fornecedores que atendem essa categoria.`);
       const mesmoNome = [...materiais.values()].find((m) => normalizarTexto(m.nomePadronizado) === normalizarTexto(nm.nome));
-      if (mesmoNome) throw new Error(`Item ${n}: já existe o material "${mesmoNome.nomePadronizado}". Escolha-o em vez de cadastrar de novo.`);
+      if (mesmoNome) {
+        // Já está no catálogo (às vezes inativo ou criado numa tentativa anterior): usa o existente.
+        avisos.push(`Item ${n}: "${mesmoNome.nomePadronizado}" já estava no catálogo — usei o cadastro existente.`);
+        return {
+          n,
+          ...i,
+          materialId: mesmoNome.id,
+          novoMaterial: null,
+          reativar: !mesmoNome.ativo,
+          nome: mesmoNome.nomePadronizado,
+          unidade: mesmoNome.unidade,
+          novo: false as const,
+          categoriaId: mesmoNome.categoriaId,
+        };
+      }
       const parecido = buscarMateriais(nm.nome, catalogo, 1)[0];
       if (parecido && parecido.pontuacao >= 0.6)
         avisos.push(`Item ${n}: material novo "${nm.nome}" é parecido com o existente "${parecido.nomePadronizado}". É o mesmo?`);
@@ -124,6 +138,9 @@ function resolverItens(db: DB, p: RequisicaoPreparada) {
         sinonimos: [...(l.novoMaterial.sinonimos ?? []), ...(l.textoOriginal ? [l.textoOriginal] : [])],
       });
       novos.push({ id: materialId, nome: l.novoMaterial.nome });
+    } else if ("reativar" in l && l.reativar && materialId) {
+      db.update(materiais).set({ ativo: true }).where(eq(materiais.id, materialId)).run();
+      if (l.textoOriginal) adicionarSinonimo(db, materialId, l.textoOriginal);
     } else if (l.textoOriginal && materialId) {
       adicionarSinonimo(db, materialId, l.textoOriginal); // aprende o jeito da obra escrever
     }
@@ -133,6 +150,11 @@ function resolverItens(db: DB, p: RequisicaoPreparada) {
 }
 
 export function gravarRequisicao(db: DB, p: RequisicaoPreparada) {
+  // Tudo ou nada: se a requisição falhar, os materiais novos também não ficam no catálogo.
+  return db.transaction((tx) => gravarRequisicaoEm(tx as unknown as DB, p));
+}
+
+function gravarRequisicaoEm(db: DB, p: RequisicaoPreparada) {
   const { itens, novos, categoriasCriadas } = resolverItens(db, p);
   const id = criarRequisicao(db, {
     obraId: p.obra.id,
