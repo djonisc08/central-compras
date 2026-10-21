@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /** Escolher um dia ou intervalo (de/até) para a tela "Meu dia". */
-export function SeletorDia({ de, ate, compacto }: { de: string; ate: string; compacto?: boolean }) {
+export function SeletorDia({ de, ate, compacto, aba }: { de: string; ate: string; compacto?: boolean; aba?: string }) {
   const router = useRouter();
   const [ini, setIni] = useState(de);
   const [fim, setFim] = useState(ate);
@@ -17,7 +17,7 @@ export function SeletorDia({ de, ate, compacto }: { de: string; ate: string; com
       onSubmit={(e) => {
         e.preventDefault();
         if (!ini) return;
-        router.push(`/dia?de=${ini}&ate=${fim && fim >= ini ? fim : ini}`);
+        router.push(`/dia?de=${ini}&ate=${fim && fim >= ini ? fim : ini}${aba && aba !== "tudo" ? `&aba=${aba}` : ""}`);
       }}
     >
       <Input type="date" value={ini} onChange={(e) => setIni(e.target.value)} className="h-8 w-[9.5rem]" aria-label="De" />

@@ -37,6 +37,13 @@ const ICONES: Record<TipoAtividade, { icone: LucideIcon; cor: string; rotulo: st
 };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+const ABAS = [
+  { chave: "tudo", rotulo: "Tudo", tipos: null },
+  { chave: "requisicoes", rotulo: "Requisições", tipos: ["requisicao"] },
+  { chave: "cotacoes", rotulo: "Cotações", tipos: ["proposta"] },
+  { chave: "pedidos", rotulo: "Pedidos fechados", tipos: ["aprovacao", "pedido", "entrega", "avaliacao", "cancelamento"] },
+] as const satisfies readonly { chave: string; rotulo: string; tipos: readonly TipoAtividade[] | null }[];
 const diaSemana = (d: string) => new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(new Date(`${d}T12:00:00`));
 
 export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
@@ -45,8 +52,11 @@ export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
   const hoje = hojeISO();
   const de = typeof sp.de === "string" && ISO.test(sp.de) ? sp.de : hoje;
   const ate = typeof sp.ate === "string" && ISO.test(sp.ate) && sp.ate >= de ? sp.ate : de;
-  const lista = atividadesNoPeriodo(getDb(), de, ate);
-  const r = resumirAtividades(lista);
+  const todas = atividadesNoPeriodo(getDb(), de, ate);
+  const r = resumirAtividades(todas);
+  const aba = ABAS.find((a) => a.chave === sp.aba) ?? ABAS[0];
+  const daAba = (a: (typeof ABAS)[number]) => (a.tipos ? todas.filter((x) => (a.tipos as readonly string[]).includes(x.tipo)) : todas);
+  const lista = daAba(aba);
   const umDia = de === ate;
 
   const segunda = somarDias(hoje, -((new Date(`${hoje}T12:00:00`).getDay() + 6) % 7));
@@ -62,7 +72,7 @@ export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
     `*Compras · ${periodo}*`,
     `${r.requisicoes} requisições · ${r.orcamentos} orçamentos · ${r.pedidos} pedidos (${formatarReais(r.totalComprado)}) · ${r.entregas} entregas`,
     "",
-    ...lista
+    ...todas
       .filter((a) => a.tipo === "pedido" || a.tipo === "entrega" || a.tipo === "requisicao")
       .map((a) => `• ${umDia ? "" : `${formatarData(a.data).slice(0, 5)} `}${a.titulo} · ${a.obra}${a.valor != null ? ` · ${formatarReais(a.valor)}` : ""}`),
   ].join("\n");
@@ -86,10 +96,10 @@ export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {atalhos.map((a) => (
           <Button key={a.rotulo} size="sm" variant={a.de === de && a.ate === ate ? "default" : "outline"} asChild>
-            <Link href={`/dia?de=${a.de}&ate=${a.ate}`}>{a.rotulo}</Link>
+            <Link href={`/dia?de=${a.de}&ate=${a.ate}${aba.chave !== "tudo" ? `&aba=${aba.chave}` : ""}`}>{a.rotulo}</Link>
           </Button>
         ))}
-        <SeletorDia de={de} ate={ate} />
+        <SeletorDia key={`${de}-${ate}`} de={de} ate={ate} aba={aba.chave} />
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -105,10 +115,34 @@ export default async function DiaPage({ searchParams }: PageProps<"/dia">) {
         />
       </div>
 
+      <nav className="mb-3 flex gap-1 overflow-x-auto border-b" aria-label="Filtrar por etapa">
+        {ABAS.map((a) => {
+          const n = daAba(a).length;
+          const ativa = a.chave === aba.chave;
+          return (
+            <Link
+              key={a.chave}
+              href={`/dia?de=${de}&ate=${ate}${a.chave !== "tudo" ? `&aba=${a.chave}` : ""}`}
+              aria-current={ativa ? "page" : undefined}
+              className={cn(
+                "-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-[13.5px] font-medium transition-colors",
+                ativa ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {a.rotulo}
+              <span className={cn("tabular rounded-full px-1.5 text-xs", ativa ? "bg-primary text-primary-foreground" : "bg-muted")}>{n}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
       <Card>
         <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-1 px-2 py-2">
           {lista.length === 0 && (
-            <Vazio titulo="Nada registrado neste período" descricao="Lançamentos aparecem aqui pela data do pedido, do orçamento, da emissão e da entrega." />
+            <Vazio
+              titulo={aba.chave === "tudo" ? "Nada registrado neste período" : `Nenhum item em “${aba.rotulo}” neste período`}
+              descricao="Lançamentos aparecem aqui pela data do pedido, do orçamento, da emissão e da entrega."
+            />
           )}
           {[...porDia].map(([data, itens]) => (
             <div key={data}>
