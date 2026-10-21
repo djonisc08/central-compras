@@ -17,11 +17,13 @@ import { FornecedorDialog } from "./fornecedor-dialog";
 export function ListaFornecedores({
   fornecedores,
   categorias,
+  buscaInicial,
 }: {
   fornecedores: FornecedorComCategorias[];
   categorias: Categoria[];
+  buscaInicial?: string;
 }) {
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useState(buscaInicial ?? "");
   const [categoria, setCategoria] = useState("todas");
 
   const filtrados = useMemo(() => {

@@ -23,7 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input";
 import { formatarNumero, formatarReais } from "@/lib/dinheiro";
 import { mensagemCobranca, mensagemCotacao, type DadosMensagemCotacao } from "@/lib/mensagens";
-import { linkWhatsapp, normalizarTexto } from "@/lib/normalizar";
+import { ehCelular, linkWhatsapp, normalizarTexto } from "@/lib/normalizar";
 import { cn } from "@/lib/utils";
 import { registrarCobrancaAction, registrarEnvioAction } from "@/server/actions/cotacao";
 import type { FornecedorAcompanhamento } from "@/server/dados/cotacao";
@@ -143,6 +143,7 @@ export function PedirCotacao({
           </div>
           <div className="truncate text-xs text-muted-foreground">
             {f.contato ?? "—"}
+            {f.whatsapp && wa && !ehCelular(f.whatsapp) && <span className="text-st-atencao"> · número fixo, pode não ter WhatsApp</span>}
             {f.categorias.length > 0 && <> · {f.categorias.join(", ")}</>}
           </div>
         </div>
@@ -177,7 +178,13 @@ export function PedirCotacao({
               </a>
             </Button>
           ) : (
-            <span className="text-xs text-muted-foreground">sem WhatsApp</span>
+            <a
+              href={`/fornecedores?busca=${encodeURIComponent(f.nome)}`}
+              className="rounded-md border border-st-atencao/50 bg-st-atencao-bg px-2 py-1 text-xs font-medium text-st-atencao hover:underline"
+              title={f.whatsapp ? `Número cadastrado: ${f.whatsapp}` : "Sem número cadastrado"}
+            >
+              {f.whatsapp ? "WhatsApp inválido · corrigir" : "sem WhatsApp · cadastrar"}
+            </a>
           )}
         </div>
       </li>

@@ -1,7 +1,7 @@
 // Validadores compartilhados entre telas (Server Actions) e scripts das skills.
 import { z } from "zod";
 import { STATUS_OBRA } from "@/db/schema";
-import { cnpjValido, somenteDigitos } from "./normalizar";
+import { cnpjValido, normalizarWhatsapp, somenteDigitos } from "./normalizar";
 
 const dataISO = z
   .string()
@@ -36,7 +36,9 @@ export const fornecedorSchema = z.object({
   nome: z.string().trim().min(2, "Informe o nome do fornecedor"),
   cnpj: cnpjOpcional,
   contato: textoOpcional,
-  whatsapp: textoOpcional,
+  whatsapp: textoOpcional.refine((v) => !v || normalizarWhatsapp(v) != null, {
+    message: "WhatsApp inválido: use DDD + número, ex. (48) 99999-0000. Se tiver dois números, deixe só o celular.",
+  }),
   email: textoOpcional.refine((v) => !v || /^\S+@\S+\.\S+$/.test(v), "E-mail inválido"),
   cidade: textoOpcional,
   ativo: z.boolean().default(true),

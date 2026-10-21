@@ -10,8 +10,9 @@ import { ListaFornecedores } from "./lista-fornecedores";
 
 export const metadata: Metadata = { title: "Fornecedores" };
 
-export default async function FornecedoresPage() {
+export default async function FornecedoresPage({ searchParams }: PageProps<"/fornecedores">) {
   await connection();
+  const { busca } = await searchParams;
   const db = getDb();
   const fornecedores = listarFornecedores(db);
   const categorias = listarCategorias(db);
@@ -34,7 +35,7 @@ export default async function FornecedoresPage() {
           </>
         }
       />
-      <ListaFornecedores fornecedores={fornecedores} categorias={categorias} />
+      <ListaFornecedores fornecedores={fornecedores} categorias={categorias} buscaInicial={typeof busca === "string" ? busca : ""} />
     </>
   );
 }

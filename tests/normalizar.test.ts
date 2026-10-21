@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buscarMateriais, cnpjValido, normalizarTexto, normalizarWhatsapp } from "@/lib/normalizar";
+import { buscarMateriais, cnpjValido, linkWhatsapp, normalizarTexto, normalizarWhatsapp } from "@/lib/normalizar";
 import { textoParaCentavos } from "@/lib/dinheiro";
 
 const catalogo = [
@@ -39,5 +39,20 @@ describe("casamento com o catálogo", () => {
   });
   it("não inventa correspondência", () => {
     expect(buscarMateriais("telha fibrocimento", catalogo)).toHaveLength(0);
+  });
+});
+
+describe("WhatsApp do fornecedor", () => {
+  it("aceita os formatos comuns e usa o primeiro número válido", () => {
+    expect(normalizarWhatsapp("(48) 99642-1767")).toBe("5548996421767");
+    expect(normalizarWhatsapp("+55 48 9 9168-5020")).toBe("5548991685020");
+    expect(normalizarWhatsapp("048 99168-5020")).toBe("5548991685020");
+    expect(normalizarWhatsapp("48 99168-5020 / 48 3333-4444")).toBe("5548991685020");
+    expect(normalizarWhatsapp("(48) 3333-4444")).toBe("554833334444");
+  });
+  it("recusa número incompleto ou misturado", () => {
+    expect(normalizarWhatsapp("9916-8502")).toBeNull();
+    expect(normalizarWhatsapp("4899168502048")).toBeNull();
+    expect(linkWhatsapp("123", "oi")).toBeNull();
   });
 });

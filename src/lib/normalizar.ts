@@ -39,22 +39,36 @@ export function formatarCnpj(cnpj: string | null | undefined): string {
 }
 
 /** Normaliza WhatsApp brasileiro para dígitos com DDI 55. */
+/**
+ * Número no formato do WhatsApp (55 + DDD + número). Aceita "(48) 9 9999-0000", "+55 48…", "048…" e,
+ * se houver mais de um número no campo ("48 99999-0000 / 48 3333-0000"), usa o primeiro.
+ * Devolve null quando não dá um número brasileiro válido.
+ */
 export function normalizarWhatsapp(tel: string | null | undefined): string | null {
-  const d = somenteDigitos(tel);
-  if (!d) return null;
-  if (d.length === 10 || d.length === 11) return `55${d}`;
-  return d;
+  if (!tel) return null;
+  for (const parte of tel.split(/[\/,;|]|\s+ou\s+|\s+e\s+/i)) {
+    let d = somenteDigitos(parte).replace(/^0+/, "");
+    if (d.length === 10 || d.length === 11) d = `55${d}`;
+    if (/^55[1-9]\d(9\d{8}|[2-8]\d{7})$/.test(d)) return d;
+  }
+  return null;
 }
 
 export function formatarWhatsapp(tel: string | null | undefined): string {
-  const d = somenteDigitos(tel);
+  const d = normalizarWhatsapp(tel) ?? "";
   const m = d.match(/^55(\d{2})(\d{4,5})(\d{4})$/);
   if (!m) return tel ?? "";
   return `(${m[1]}) ${m[2]}-${m[3]}`;
 }
 
+/** Fixo (8 dígitos depois do DDD) normalmente não tem WhatsApp. */
+export function ehCelular(tel: string | null | undefined) {
+  const d = normalizarWhatsapp(tel);
+  return !!d && d.length === 13;
+}
+
 export function linkWhatsapp(tel: string | null | undefined, mensagem?: string): string | null {
-  const d = somenteDigitos(tel);
+  const d = normalizarWhatsapp(tel);
   if (!d) return null;
   const q = mensagem ? `?text=${encodeURIComponent(mensagem)}` : "";
   return `https://wa.me/${d}${q}`;
