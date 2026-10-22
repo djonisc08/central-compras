@@ -5,7 +5,8 @@ import { ClipboardListIcon, ClipboardPasteIcon, PlusIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { STATUS_REQUISICAO, type StatusRequisicao } from "@/db/schema";
 import { listarObras } from "@/server/dados/cadastros";
-import { listarRequisicoes } from "@/server/dados/requisicoes";
+import { listarRequisicoes, podeExcluirRequisicao } from "@/server/dados/requisicoes";
+import { CancelarRequisicao } from "@/components/cancelar-requisicao";
 import { PageHeader } from "@/components/page-header";
 import { StatusRequisicaoBadge, UrgenteBadge } from "@/components/status";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ export default async function RequisicoesPage({ searchParams }: PageProps<"/requ
                   <TableHead>Necessidade</TableHead>
                   <TableHead className="text-center">Propostas</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,6 +131,11 @@ export default async function RequisicoesPage({ searchParams }: PageProps<"/requ
                     <TableCell className="tabular text-center">{r.qtdPropostas || "—"}</TableCell>
                     <TableCell>
                       <StatusRequisicaoBadge status={r.status} />
+                    </TableCell>
+                    <TableCell className="relative z-10 w-10 px-1">
+                      {!["cancelada", "entregue", "pedido_emitido"].includes(r.status) && (
+                        <CancelarRequisicao id={r.id} resumo={`${r.obra} · ${r.resumoItens}`} podeExcluir={podeExcluirRequisicao(db, r.id)} variante="icone" />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

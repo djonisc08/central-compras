@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { BanIcon, FlameIcon, LandmarkIcon, MoreHorizontalIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
+import { FlameIcon, LandmarkIcon, MoreHorizontalIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +14,6 @@ import {
 import type { StatusRequisicao } from "@/db/schema";
 import {
   atualizarRequisicaoAction,
-  cancelarRequisicaoAction,
   reabrirRequisicaoAction,
 } from "@/server/actions/requisicoes";
 
@@ -64,16 +63,7 @@ export function AcoesRequisicao({
           <DropdownMenuItem onSelect={() => rodar(() => reabrirRequisicaoAction(id), "Requisição reaberta")}>
             <RotateCcwIcon /> Reabrir
           </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            destrutivo
-            onSelect={() => {
-              if (confirm("Cancelar esta requisição?")) rodar(() => cancelarRequisicaoAction(id), "Requisição cancelada");
-            }}
-          >
-            <BanIcon /> Cancelar requisição
-          </DropdownMenuItem>
-        )}
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

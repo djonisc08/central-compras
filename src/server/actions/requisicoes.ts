@@ -5,6 +5,7 @@ import { getDb } from "@/db/client";
 import {
   atualizarCabecalhoRequisicao,
   cancelarRequisicao,
+  excluirRequisicao,
   criarRequisicao,
   excluirProposta,
   limparVencedores,
@@ -39,8 +40,12 @@ export async function atualizarRequisicaoAction(
   return comRefresh(executar(() => atualizarCabecalhoRequisicao(getDb(), id, dados)));
 }
 
-export async function cancelarRequisicaoAction(id: number) {
-  return comRefresh(executar(() => cancelarRequisicao(getDb(), id)));
+export async function cancelarRequisicaoAction(id: number, motivo?: string) {
+  return comRefresh(executar(() => cancelarRequisicao(getDb(), id, motivo)));
+}
+
+export async function excluirRequisicaoAction(id: number) {
+  return comRefresh(executar(() => excluirRequisicao(getDb(), id)));
 }
 
 export async function reabrirRequisicaoAction(id: number) {

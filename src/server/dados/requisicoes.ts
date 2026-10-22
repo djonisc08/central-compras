@@ -143,14 +143,49 @@ export function atualizarCabecalhoRequisicao(
   db.update(requisicoes).set(dados).where(eq(requisicoes.id, id)).run();
 }
 
-export function cancelarRequisicao(db: DB, id: number) {
-  const temPedido = db
-    .select({ id: pedidos.id })
+/**
+ * Cancela a cotação (a obra desistiu / não fechou). Pedidos ainda não enviados ao fornecedor
+ * (aguardando aprovação ou aprovado) são cancelados junto; pedido já emitido precisa ser cancelado antes.
+ */
+export function cancelarRequisicao(db: DB, id: number, motivo = "") {
+  const req = db.select().from(requisicoes).where(eq(requisicoes.id, id)).get();
+  if (!req) throw new Error("Requisição não encontrada");
+  const ativos = db
+    .select({ id: pedidos.id, numero: pedidos.numero, status: pedidos.status })
     .from(pedidos)
     .where(and(eq(pedidos.requisicaoId, id), sql`${pedidos.status} != 'cancelado'`))
-    .get();
-  if (temPedido) throw new Error("Cancele os pedidos desta requisição antes de cancelá-la");
-  db.update(requisicoes).set({ status: "cancelada" }).where(eq(requisicoes.id, id)).run();
+    .all();
+  const enviados = ativos.filter((p) => !["aguardando_aprovacao", "aprovado"].includes(p.status));
+  if (enviados.length)
+    throw new Error(
+      `O pedido ${enviados.map((p) => p.numero ?? `#${p.id}`).join(", ")} já foi emitido ao fornecedor. Cancele-o na tela do pedido (avisando o fornecedor) e depois cancele a cotação.`,
+    );
+  const texto = motivo.trim() || "sem motivo informado";
+  const hoje = new Date().toLocaleDateString("pt-BR");
+  db.transaction((tx) => {
+    if (ativos.length)
+      tx.update(pedidos)
+        .set({ status: "cancelado", motivoCancelamento: `Cotação cancelada: ${texto}` })
+        .where(inArray(pedidos.id, ativos.map((p) => p.id)))
+        .run();
+    tx.update(requisicoes)
+      .set({ status: "cancelada", observacoes: [req.observacoes, `CANCELADA em ${hoje}: ${texto}`].filter(Boolean).join("\n") })
+      .where(eq(requisicoes.id, id))
+      .run();
+  });
+  return { pedidosCancelados: ativos.length };
+}
+
+/** Pode excluir de vez: nunca virou pedido (lançada por engano ou duplicada). */
+export function podeExcluirRequisicao(db: DB, id: number) {
+  return !db.select({ id: pedidos.id }).from(pedidos).where(eq(pedidos.requisicaoId, id)).get();
+}
+
+/** Exclui a requisição com itens, propostas e envios. Só para o que nunca virou pedido. */
+export function excluirRequisicao(db: DB, id: number) {
+  if (!podeExcluirRequisicao(db, id))
+    throw new Error("Esta cotação já teve pedido (mesmo cancelado): para manter o histórico, use Cancelar em vez de Excluir.");
+  db.delete(requisicoes).where(eq(requisicoes.id, id)).run();
 }
 
 export function reabrirRequisicao(db: DB, id: number) {

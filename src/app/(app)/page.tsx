@@ -3,7 +3,8 @@ import { connection } from "next/server";
 import { AlertTriangleIcon, ArrowRightIcon, CalendarDaysIcon, ClipboardPasteIcon, FileBarChartIcon, ClipboardListIcon, FlameIcon, StampIcon, TruckIcon } from "lucide-react";
 import { getDb } from "@/db/client";
 import { entregasPendentes, gastoPorObraNoPeriodo, resumoOperacional } from "@/server/dados/painel";
-import { listarRequisicoes } from "@/server/dados/requisicoes";
+import { listarRequisicoes, podeExcluirRequisicao } from "@/server/dados/requisicoes";
+import { CancelarRequisicao } from "@/components/cancelar-requisicao";
 import { KpiCard } from "@/components/kpi-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusRequisicaoBadge, UrgenteBadge } from "@/components/status";
@@ -92,7 +93,8 @@ export default async function PainelPage() {
             {fila.map((q) => {
               const d = diasEntre(hoje, q.dataNecessidade);
               return (
-                <Link key={q.id} href={q.qtdPropostas ? `/requisicoes/${q.id}/mapa` : `/requisicoes/${q.id}`} className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted">
+                <div key={q.id} className="group flex items-center gap-1 rounded-lg pr-1 transition-colors hover:bg-muted">
+                <Link href={q.qtdPropostas ? `/requisicoes/${q.id}/mapa` : `/requisicoes/${q.id}`} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="tabular shrink-0 text-xs text-muted-foreground">#{q.id}</span>
@@ -114,6 +116,8 @@ export default async function PainelPage() {
                     </div>
                   </div>
                 </Link>
+                <CancelarRequisicao id={q.id} resumo={`${q.obra} · ${q.resumoItens}`} podeExcluir={podeExcluirRequisicao(db, q.id)} variante="icone" />
+                </div>
               );
             })}
           </CardContent>

@@ -134,3 +134,35 @@ describe("cancelar um de vários pedidos", () => {
     expect(obterRequisicao(db, reqId)!.status).toBe("entregue");
   });
 });
+
+describe("cancelar e excluir cotação", () => {
+  it("cancela junto o pedido ainda não enviado e guarda o motivo", async () => {
+    const { cancelarRequisicao } = await import("@/server/dados/requisicoes");
+    const pid = proposta(a, [1000, 1000]);
+    marcarFornecedorVencedor(db, reqId, pid);
+    const [pedidoId] = gerarPedidos(db, { requisicaoId: reqId }); // aguardando aprovação
+    expect(cancelarRequisicao(db, reqId, "A obra cancelou o pedido").pedidosCancelados).toBe(1);
+    expect(obterPedido(db, pedidoId)!.status).toBe("cancelado");
+    const r = obterRequisicao(db, reqId)!;
+    expect(r.status).toBe("cancelada");
+    expect(r.observacoes).toMatch(/CANCELADA em .*A obra cancelou/);
+  });
+
+  it("não cancela se o pedido já foi emitido ao fornecedor", async () => {
+    const { cancelarRequisicao } = await import("@/server/dados/requisicoes");
+    const { aprovarEEmitir } = await import("@/server/dados/pedidos");
+    const pid = proposta(a, [1000, 1000]);
+    marcarFornecedorVencedor(db, reqId, pid);
+    const [pedidoId] = gerarPedidos(db, { requisicaoId: reqId });
+    aprovarEEmitir(db, pedidoId, { aprovadoPor: "Diretoria", dataAprovacao: "2026-10-21" });
+    expect(() => cancelarRequisicao(db, reqId, "x")).toThrow(/já foi emitido/);
+  });
+
+  it("exclui de vez só o que nunca virou pedido", async () => {
+    const { excluirRequisicao, podeExcluirRequisicao } = await import("@/server/dados/requisicoes");
+    proposta(a, [1000, 1000]);
+    expect(podeExcluirRequisicao(db, reqId)).toBe(true);
+    excluirRequisicao(db, reqId);
+    expect(obterRequisicao(db, reqId)).toBeNull();
+  });
+});

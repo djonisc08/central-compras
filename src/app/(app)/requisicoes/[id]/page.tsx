@@ -7,7 +7,7 @@ import { getDb } from "@/db/client";
 import { listarCategorias } from "@/server/dados/cadastros";
 import { acompanhamentoCotacao } from "@/server/dados/cotacao";
 import { obterEmpresa } from "@/server/dados/empresa";
-import { obterMapa, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
+import { obterMapa, podeExcluirRequisicao, temPedidosAtivos, ultimosPrecosPagos } from "@/server/dados/requisicoes";
 import { PageHeader } from "@/components/page-header";
 import { StatusRequisicaoBadge, UrgenteBadge } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { AcoesRequisicao } from "./acoes-requisicao";
 import { listarAnexosPendentes } from "@/server/anexos";
 import { AnexarOrcamento } from "./anexar-orcamento";
+import { CancelarRequisicao } from "@/components/cancelar-requisicao";
 import { PedirCotacao } from "./pedir-cotacao";
 import { PropostaAcoes } from "./proposta-acoes";
 
@@ -95,6 +96,14 @@ export default async function RequisicaoPage({ params }: PageProps<"/requisicoes
                 <GridIcon /> Comparar e fechar
               </Link>
             </Button>
+            {r.status !== "cancelada" && r.status !== "entregue" && (
+              <CancelarRequisicao
+                id={r.id}
+                resumo={`${r.obra} · ${r.itens.map((i) => i.material).slice(0, 3).join(", ")}${r.itens.length > 3 ? "…" : ""}`}
+                podeExcluir={podeExcluirRequisicao(db, r.id)}
+                depois="/requisicoes"
+              />
+            )}
             <AcoesRequisicao id={r.id} status={r.status} urgente={r.urgente} dataNecessidade={r.dataNecessidade} />
           </>
         }
