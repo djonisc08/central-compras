@@ -2,6 +2,7 @@
 
 import { aoEnviar } from "@/lib/form";
 import { useState, useTransition } from "react";
+import { Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Campo } from "@/components/campo";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { salvarObraAction } from "@/server/actions/cadastros";
+import { excluirObraAction, salvarObraAction } from "@/server/actions/cadastros";
 import type { StatusObra } from "@/db/schema";
 import { formatarCnpj } from "@/lib/normalizar";
 
@@ -36,6 +37,17 @@ export function ObraDialog({ obra, children }: { obra?: ObraForm; children: Reac
   const [aberto, setAberto] = useState(false);
   const [pendente, iniciar] = useTransition();
   const [status, setStatus] = useState<StatusObra>(obra?.status ?? "ativa");
+
+  function excluir() {
+    if (!obra?.id || !confirm(`Excluir a obra "${obra.nome}"? Não dá para desfazer.`)) return;
+    const id = obra.id;
+    iniciar(async () => {
+      const r = await excluirObraAction(id);
+      if (!r.ok) return void toast.error(r.erro, { duration: 8000 });
+      toast.success("Obra excluída");
+      setAberto(false);
+    });
+  }
 
   function enviar(form: FormData) {
     iniciar(async () => {
@@ -109,13 +121,22 @@ export function ObraDialog({ obra, children }: { obra?: ObraForm; children: Reac
               </Select>
             </Campo>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {obra ? (
+              <Button type="button" variant="ghost" className="text-muted-foreground hover:text-st-urgente" onClick={excluir} disabled={pendente}>
+                <Trash2Icon /> Excluir obra
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => setAberto(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={pendente}>
               {pendente ? "Salvando…" : "Salvar"}
             </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

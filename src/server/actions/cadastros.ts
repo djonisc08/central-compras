@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { getDb } from "@/db/client";
 import {
   criarCategoria,
+  excluirObra,
   salvarFornecedor,
   salvarMaterial,
   salvarObra,
@@ -11,6 +12,12 @@ import {
 import { salvarEmpresa } from "@/server/dados/empresa";
 import type { EmpresaInput, FornecedorInput, MaterialInput, ObraInput } from "@/lib/validacao";
 import { executar } from "./resultado";
+
+export async function excluirObraAction(id: number) {
+  const r = executar(() => excluirObra(getDb(), id));
+  if (r.ok) refresh();
+  return r;
+}
 
 export async function salvarObraAction(dados: ObraInput, id?: number) {
   const r = executar(() => salvarObra(getDb(), dados, id));

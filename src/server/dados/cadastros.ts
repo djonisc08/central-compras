@@ -9,6 +9,7 @@ import {
   materialSinonimos,
   materiais,
   obras,
+  requisicoes,
 } from "@/db/schema";
 import { normalizarTexto, normalizarWhatsapp, type CandidatoMaterial } from "@/lib/normalizar";
 import {
@@ -40,6 +41,19 @@ export function listarObras(db: DB) {
     .from(obras)
     .orderBy(sql`case ${obras.status} when 'ativa' then 0 when 'planejada' then 1 else 2 end`, asc(obras.nome))
     .all();
+}
+
+/**
+ * Exclui a obra cadastrada por engano. Obra com requisições fica protegida (histórico de compras):
+ * nesse caso marque como "Concluída", que tira das listas de novas requisições.
+ */
+export function excluirObra(db: DB, id: number) {
+  const n = db.select({ n: sql<number>`count(*)` }).from(requisicoes).where(eq(requisicoes.obraId, id)).get()?.n ?? 0;
+  if (n > 0)
+    throw new Error(
+      `Esta obra tem ${n} requisição(ões) no histórico e não pode ser excluída. Para tirá-la das listas, edite e marque o status como "Concluída".`,
+    );
+  db.delete(obras).where(eq(obras.id, id)).run();
 }
 
 export function salvarObra(db: DB, entrada: ObraInput, id?: number) {

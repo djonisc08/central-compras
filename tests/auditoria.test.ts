@@ -166,3 +166,13 @@ describe("cancelar e excluir cotação", () => {
     expect(obterRequisicao(db, reqId)).toBeNull();
   });
 });
+
+describe("excluir obra", () => {
+  it("exclui obra sem requisições e protege a que tem histórico", async () => {
+    const { excluirObra, listarObras } = await import("@/server/dados/cadastros");
+    const vazia = salvarObra(db, { nome: "Obra cadastrada por engano" });
+    excluirObra(db, vazia);
+    expect(listarObras(db).some((o) => o.id === vazia)).toBe(false);
+    expect(() => excluirObra(db, obra)).toThrow(/Concluída/);
+  });
+});
