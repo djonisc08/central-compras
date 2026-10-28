@@ -33,9 +33,12 @@ export default async function PropostaPage({ params, searchParams }: PageProps<"
   const proposta = existente ? obterProposta(db, existente.id) : null;
 
   const daCategoria = new Set(fornecedoresPorCategoria(db, [...new Set(req.itens.map((i) => i.categoriaId))]).map((f) => f.id));
-  const fornecedores = listarFornecedores(db, { somenteAtivos: true }).map((f) => ({
+  const ativos = listarFornecedores(db, { somenteAtivos: true });
+  const repetido = (nome: string) => ativos.filter((x) => x.nome === nome).length > 1;
+  const fornecedores = ativos.map((f) => ({
     id: f.id,
-    nome: f.nome,
+    // Vários vendedores da mesma empresa: mostra quem é cada um.
+    nome: repetido(f.nome) && f.contato ? `${f.nome} · ${f.contato}` : f.nome,
     sugerido: daCategoria.has(f.id),
   }));
   const ultimos = ultimosPrecosPagos(db, req.itens.map((i) => i.materialId));

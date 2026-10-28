@@ -2,6 +2,7 @@
 // entregas e avaliação do fornecedor.
 import { and, asc, desc, eq, inArray, like, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
+import { nomeFornecedorSql } from "./cadastros";
 import {
   propostaItens,
   propostas,
@@ -217,7 +218,7 @@ export function listarPedidos(db: DB, filtro: FiltroPedidos = {}, hoje = hojeISO
       status: pedidos.status,
       requisicaoId: pedidos.requisicaoId,
       fornecedorId: pedidos.fornecedorId,
-      fornecedor: fornecedores.nome,
+      fornecedor: nomeFornecedorSql,
       obra: obras.nome,
       valorTotalCentavos: pedidos.valorTotalCentavos,
       formaPagamento: pedidos.formaPagamento,
@@ -269,7 +270,7 @@ export function obterPedido(db: DB, id: number) {
       motivoCancelamento: pedidos.motivoCancelamento,
       criadoEm: pedidos.criadoEm,
       fornecedorId: fornecedores.id,
-      fornecedor: fornecedores.nome,
+      fornecedor: nomeFornecedorSql,
       fornecedorCnpj: fornecedores.cnpj,
       fornecedorContato: fornecedores.contato,
       fornecedorWhatsapp: fornecedores.whatsapp,

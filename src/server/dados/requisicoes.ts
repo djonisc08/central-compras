@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import type { DB } from "@/db/client";
+import { nomeFornecedorSql } from "./cadastros";
 import {
   fornecedores,
   materiais,
@@ -249,7 +250,7 @@ export function listarPropostas(db: DB, requisicaoId: number): MapaPropostaEntra
     .select({
       id: propostas.id,
       fornecedorId: propostas.fornecedorId,
-      fornecedor: fornecedores.nome,
+      fornecedor: nomeFornecedorSql,
       freteCentavos: propostas.freteCentavos,
       condicaoPagamento: propostas.condicaoPagamento,
       descontoAVistaBp: propostas.descontoAVistaBp,

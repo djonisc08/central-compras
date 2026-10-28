@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { DB } from "@/db/client";
 import {
   categorias,
+  cotacaoEnvios,
   fornecedorCategorias,
   fornecedores,
   materialSinonimos,
@@ -124,18 +125,35 @@ export function fornecedoresPorCategoria(db: DB, categoriaIds: number[]) {
   return listarFornecedores(db, { somenteAtivos: true }).filter((f) => ids.includes(f.id));
 }
 
+/**
+ * Nome para mostrar: "Cassol Center Lar · Ramon" quando há mais de um cadastro com o mesmo nome
+ * (vários vendedores da mesma empresa); senão só o nome.
+ */
+export const nomeFornecedorSql = sql<string>`case when ${fornecedores.contato} is not null and exists (select 1 from fornecedores f2 where f2.nome = ${fornecedores.nome} and f2.id <> ${fornecedores.id}) then ${fornecedores.nome} || ' · ' || ${fornecedores.contato} else ${fornecedores.nome} end`;
+
+/**
+ * Exclui o fornecedor (ou vendedor). Quem já tem orçamento ou pedido fica protegido para não
+ * apagar o histórico de preços: nesse caso desative ("Fornecedor ativo" desligado).
+ */
+export function excluirFornecedor(db: DB, id: number) {
+  const usado = db.get<{ n: number }>(
+    sql`select (select count(*) from propostas where fornecedor_id = ${id}) + (select count(*) from pedidos where fornecedor_id = ${id}) as n`,
+  )?.n;
+  if (usado)
+    throw new Error(
+      "Este fornecedor tem orçamentos ou pedidos no histórico e não pode ser excluído. Para tirá-lo das cotações, edite e desligue “Fornecedor ativo”.",
+    );
+  db.transaction((tx) => {
+    tx.delete(cotacaoEnvios).where(eq(cotacaoEnvios.fornecedorId, id)).run();
+    tx.delete(fornecedores).where(eq(fornecedores.id, id)).run();
+  });
+}
+
 export function salvarFornecedor(db: DB, entrada: FornecedorInput, id?: number) {
   const { categoriaIds, ...dados } = fornecedorSchema.parse(entrada);
   const valores = { ...dados, whatsapp: normalizarWhatsapp(dados.whatsapp) };
   return db.transaction((tx) => {
-    if (valores.cnpj) {
-      const dup = tx
-        .select({ id: fornecedores.id, nome: fornecedores.nome })
-        .from(fornecedores)
-        .where(eq(fornecedores.cnpj, valores.cnpj))
-        .get();
-      if (dup && dup.id !== id) throw new Error(`CNPJ já cadastrado para ${dup.nome}`);
-    }
+    // Mesmo CNPJ pode repetir: cada vendedor da empresa é um cadastro (contato e WhatsApp próprios).
     let fid = id;
     if (fid) tx.update(fornecedores).set(valores).where(eq(fornecedores.id, fid)).run();
     else fid = tx.insert(fornecedores).values(valores).returning({ id: fornecedores.id }).get().id;

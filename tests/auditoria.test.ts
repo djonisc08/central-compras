@@ -191,3 +191,18 @@ describe("desconto conseguido depois do pedido fechado", () => {
     expect(() => editarPedido(db, pedidoId, { descontoNegociadoCentavos: 30000 })).toThrow(/maior que o valor/);
   });
 });
+
+describe("fornecedor com vários vendedores", () => {
+  it("aceita o mesmo CNPJ para vendedores diferentes e mostra o vendedor no mapa", async () => {
+    const { salvarFornecedor: salvar, excluirFornecedor } = await import("@/server/dados/cadastros");
+    const cat = obterRequisicao(db, reqId)!.itens[0].categoriaId;
+    const ramon = salvar(db, { nome: "Cassol Center Lar", cnpj: "11.249.827/0001-50", contato: "Ramon", categoriaIds: [cat] });
+    const ana = salvar(db, { nome: "Cassol Center Lar", cnpj: "11.249.827/0001-50", contato: "Ana", categoriaIds: [cat] });
+    proposta(ramon, [1000, 1000]);
+    proposta(ana, [900, 900]);
+    expect(obterMapa(db, reqId)!.resumo.colunas.map((c) => c.proposta.fornecedor).sort()).toEqual(["Cassol Center Lar · Ana", "Cassol Center Lar · Ramon"]);
+    expect(() => excluirFornecedor(db, ramon)).toThrow(/histórico/);
+    const sobra = salvar(db, { nome: "Cassol Center Lar", cnpj: "11.249.827/0001-50", contato: "Pedro", categoriaIds: [cat] });
+    excluirFornecedor(db, sobra);
+  });
+});

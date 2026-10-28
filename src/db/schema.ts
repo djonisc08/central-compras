@@ -82,7 +82,8 @@ export const categorias = sqliteTable("categorias", {
 export const fornecedores = sqliteTable("fornecedores", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   nome: text("nome").notNull(),
-  cnpj: text("cnpj").unique(), // somente dígitos
+  // Somente dígitos. Pode repetir: um cadastro por vendedor da mesma empresa (ex.: 3 vendedores da Cassol).
+  cnpj: text("cnpj"),
   contato: text("contato"),
   whatsapp: text("whatsapp"), // somente dígitos com DDI, ex.: 5547999990000
   email: text("email"),
@@ -90,7 +91,7 @@ export const fornecedores = sqliteTable("fornecedores", {
   ativo: integer("ativo", { mode: "boolean" }).notNull().default(true),
   observacoes: text("observacoes"),
   criadoEm: criadoEm(),
-});
+}, (t) => [index("fornecedores_cnpj_idx").on(t.cnpj)]);
 
 export const fornecedorCategorias = sqliteTable(
   "fornecedor_categorias",
