@@ -176,3 +176,18 @@ describe("excluir obra", () => {
     expect(() => excluirObra(db, obra)).toThrow(/Concluída/);
   });
 });
+
+describe("desconto conseguido depois do pedido fechado", () => {
+  it("editar o pedido com desconto e frete recalcula o total", async () => {
+    const { aprovarEEmitir, editarPedido } = await import("@/server/dados/pedidos");
+    const pid = proposta(a, [1000, 1000], { freteCentavos: 500 }); // 20.000 + 500
+    marcarFornecedorVencedor(db, reqId, pid);
+    const [pedidoId] = gerarPedidos(db, { requisicaoId: reqId });
+    aprovarEEmitir(db, pedidoId, { aprovadoPor: "Diretoria", dataAprovacao: "2026-10-28" });
+    editarPedido(db, pedidoId, { descontoNegociadoCentavos: 1500, freteCentavos: 0 });
+    const p = obterPedido(db, pedidoId)!;
+    expect(p.valorTotalCentavos).toBe(18500);
+    expect(p.descontoNegociadoCentavos).toBe(1500);
+    expect(() => editarPedido(db, pedidoId, { descontoNegociadoCentavos: 30000 })).toThrow(/maior que o valor/);
+  });
+});

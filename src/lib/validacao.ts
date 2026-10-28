@@ -187,6 +187,9 @@ export const edicaoPedidoSchema = z.object({
   fatCno: textoOpcional,
   fatEndereco: textoOpcional,
   fatCep: textoOpcional,
+  /** Valores renegociados depois de fechado (centavos). Ausente = mantém. */
+  freteCentavos: centavos.optional(),
+  descontoNegociadoCentavos: centavos.optional(),
 });
 export type EdicaoPedidoInput = z.input<typeof edicaoPedidoSchema>;
 

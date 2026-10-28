@@ -61,6 +61,27 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
 
   const subtotal = p.itens.reduce((s, i) => s + i.totalCentavos, 0);
 
+  const dadosEdicao = {
+    id: p.id,
+    numero: p.numero,
+    condicaoPagamento: p.condicaoPagamento,
+    aprovadoPor: p.aprovadoPor,
+    dataAprovacao: p.dataAprovacao,
+    dataEmissao: p.dataEmissao,
+    prazoPrometido: p.prazoPrometido,
+    observacoes: p.observacoes,
+    razaoSocial: p.obraRazaoSocial,
+    cnpj: p.obraCnpj,
+    cno: p.obraCno,
+    endereco: p.obraEndereco,
+    cep: p.obraCep,
+    itensCentavos: p.itens.reduce((t, i) => t + i.totalCentavos, 0),
+    freteCentavos: p.freteCentavos,
+    descontoNegociadoCentavos: p.descontoNegociadoCentavos,
+    descontoBp: p.descontoBp,
+    valorTotalCentavos: p.valorTotalCentavos,
+  };
+
   return (
     <>
       <PageHeader
@@ -78,6 +99,8 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
         }
         descricao={`${p.fornecedor} · ${p.obra}`}
         acoes={
+          <>
+          {p.status !== "cancelado" && <EditarPedido pedido={dadosEdicao} destaque />}
           <AcoesPedido
             pedido={{
               id: p.id,
@@ -89,6 +112,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
             hoje={hoje}
             whatsapp={wa}
           />
+          </>
         }
       />
 
@@ -293,23 +317,7 @@ export default async function PedidoPage({ params }: PageProps<"/pedidos/[id]">)
               </Info>
               {p.status !== "cancelado" && (
                 <div className="border-t pt-3">
-                  <EditarPedido
-                    pedido={{
-                      id: p.id,
-                      numero: p.numero,
-                      condicaoPagamento: p.condicaoPagamento,
-                      aprovadoPor: p.aprovadoPor,
-                      dataAprovacao: p.dataAprovacao,
-                      dataEmissao: p.dataEmissao,
-                      prazoPrometido: p.prazoPrometido,
-                      observacoes: p.observacoes,
-                      razaoSocial: p.obraRazaoSocial,
-                      cnpj: p.obraCnpj,
-                      cno: p.obraCno,
-                      endereco: p.obraEndereco,
-                      cep: p.obraCep,
-                    }}
-                  />
+                  <EditarPedido pedido={dadosEdicao} />
                   {p.editadoEm && <div className="mt-1.5 text-center text-xs text-muted-foreground">Corrigido em {formatarData(p.editadoEm.slice(0, 10))} às {p.editadoEm.slice(11, 16)}</div>}
                 </div>
               )}

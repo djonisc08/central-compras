@@ -349,8 +349,18 @@ export function editarPedido(db: DB, id: number, entrada: EdicaoPedidoInput) {
   if (aprovacao && emissao && emissao < aprovacao) throw new Error("A emissão não pode ser antes da aprovação");
   if (emissao && prazo && prazo < emissao) throw new Error("A entrega prometida não pode ser antes da emissão");
   const igual = (v: string | null | undefined, ficha: string | null) => (v && v !== (ficha ?? "") ? v : null);
+  // Desconto conseguido depois de fechado: recalcula o total como na geração do pedido
+  // (itens − desconto negociado, depois o desconto à vista, mais o frete).
+  const itens = p.itens.reduce((s, i) => s + i.totalCentavos, 0);
+  const frete = d.freteCentavos ?? p.freteCentavos;
+  const negociado = d.descontoNegociadoCentavos ?? p.descontoNegociadoCentavos;
+  if (negociado > itens) throw new Error("O desconto não pode ser maior que o valor dos itens");
+  const valorTotalCentavos = aplicarDesconto(itens - negociado, p.descontoBp) + frete;
   db.update(pedidos)
     .set({
+      freteCentavos: frete,
+      descontoNegociadoCentavos: negociado,
+      valorTotalCentavos,
       condicaoPagamento: d.condicaoPagamento ?? null,
       aprovadoPor: d.aprovadoPor ?? p.aprovadoPor,
       dataAprovacao: d.dataAprovacao ?? p.dataAprovacao,
